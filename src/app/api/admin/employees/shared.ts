@@ -47,7 +47,16 @@ export async function upsertEmployeeLogic(supabaseAdmin: SupabaseClient, data: a
 
         const isUpdate = !!existingEmployee;
         const currentVersion = existingEmployee?.version || 1;
-        const authEmail = email || `${employee_code}@ledger-system.local`;
+
+        // メールアドレスは必須。空の場合はエラーとして処理する
+        if (!email || !email.trim()) {
+            return {
+                success: false,
+                error: '登録エラー: メールアドレスは必須です。',
+                code: employee_code
+            };
+        }
+        const authEmail = email.trim().toLowerCase();
 
         if (isUpdate && existingEmployee.auth_id) {
             targetAuthId = existingEmployee.auth_id;

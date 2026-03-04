@@ -91,36 +91,76 @@ export const parseAndValidateEmployees = (
         // 2-6. Name / Kana
         const lastName = String(rowData['苗字(必須)'] || rowData['氏名'] || '').trim();
         const firstName = String(rowData['名前(必須)'] || '').trim();
-        const lastNameKana = String(rowData['苗字カナ'] || rowData['氏名カナ'] || '').trim();
-        const firstNameKana = String(rowData['名前カナ'] || '').trim();
+
+        // 半角カナ → 全角カナ変換（バリデーション前に自動変換）
+        const toFullWidthKana = (str: string): string => {
+            // 半角カナ濁点・半濁点付き文字の対応表
+            const hankakuMap: Record<string, string> = {
+                'ｦ': 'ヲ', 'ｧ': 'ァ', 'ｨ': 'ィ', 'ｩ': 'ゥ', 'ｪ': 'ェ', 'ｫ': 'ォ',
+                'ｬ': 'ャ', 'ｭ': 'ュ', 'ｮ': 'ョ', 'ｯ': 'ッ', 'ｰ': 'ー',
+                'ｱ': 'ア', 'ｲ': 'イ', 'ｳ': 'ウ', 'ｴ': 'エ', 'ｵ': 'オ',
+                'ｶ': 'カ', 'ｷ': 'キ', 'ｸ': 'ク', 'ｹ': 'ケ', 'ｺ': 'コ',
+                'ｻ': 'サ', 'ｼ': 'シ', 'ｽ': 'ス', 'ｾ': 'セ', 'ｿ': 'ソ',
+                'ﾀ': 'タ', 'ﾁ': 'チ', 'ﾂ': 'ツ', 'ﾃ': 'テ', 'ﾄ': 'ト',
+                'ﾅ': 'ナ', 'ﾆ': 'ニ', 'ﾇ': 'ヌ', 'ﾈ': 'ネ', 'ﾉ': 'ノ',
+                'ﾊ': 'ハ', 'ﾋ': 'ヒ', 'ﾌ': 'フ', 'ﾍ': 'ヘ', 'ﾎ': 'ホ',
+                'ﾏ': 'マ', 'ﾐ': 'ミ', 'ﾑ': 'ム', 'ﾒ': 'メ', 'ﾓ': 'モ',
+                'ﾔ': 'ヤ', 'ﾕ': 'ユ', 'ﾖ': 'ヨ',
+                'ﾗ': 'ラ', 'ﾘ': 'リ', 'ﾙ': 'ル', 'ﾚ': 'レ', 'ﾛ': 'ロ',
+                'ﾜ': 'ワ', 'ﾝ': 'ン', 'ﾞ': '゛', 'ﾟ': '゜',
+            };
+            // 濁点・半濁点付き文字の合成対応表
+            const dakutenMap: Record<string, string> = {
+                'カﾞ': 'ガ', 'キﾞ': 'ギ', 'クﾞ': 'グ', 'ケﾞ': 'ゲ', 'コﾞ': 'ゴ',
+                'サﾞ': 'ザ', 'シﾞ': 'ジ', 'スﾞ': 'ズ', 'セﾞ': 'ゼ', 'ソﾞ': 'ゾ',
+                'タﾞ': 'ダ', 'チﾞ': 'ヂ', 'ツﾞ': 'ヅ', 'テﾞ': 'デ', 'トﾞ': 'ド',
+                'ハﾞ': 'バ', 'ヒﾞ': 'ビ', 'フﾞ': 'ブ', 'ヘﾞ': 'ベ', 'ホﾞ': 'ボ',
+                'ハﾟ': 'パ', 'ヒﾟ': 'ピ', 'フﾟ': 'プ', 'ヘﾟ': 'ペ', 'ホﾟ': 'ポ',
+                'ウﾞ': 'ヴ',
+            };
+            // まず1文字ずつ全角カナに変換
+            let result = str.split('').map(c => hankakuMap[c] || c).join('');
+            // 次に濁点・半濁点の合成処理
+            for (const [key, val] of Object.entries(dakutenMap)) {
+                result = result.split(key).join(val);
+            }
+            return result;
+        };
+
+        const lastNameKanaRaw = String(rowData['苗字カナ'] || rowData['氏名カナ'] || '').trim();
+        const firstNameKanaRaw = String(rowData['名前カナ'] || '').trim();
+        // 半角カナが含まれていれば全角カナへ自動変換
+        const lastNameKana = toFullWidthKana(lastNameKanaRaw);
+        const firstNameKana = toFullWidthKana(firstNameKanaRaw);
 
         if (!lastName) { validationErrors.push(`${excelRowNumber}行目: 苗字(必須)が未入力です`); rowHasError = true; }
         if (!firstName) { validationErrors.push(`${excelRowNumber}行目: 名前(必須)が未入力です`); rowHasError = true; }
 
         const katakanaRegex = /^[ァ-ヶー]+$/;
         if (lastNameKana && !katakanaRegex.test(lastNameKana.replace(/[\s　]/g, ''))) {
-            validationErrors.push(`${excelRowNumber}行目: 苗字カナ「${lastNameKana}」はカタカナで入力してください`);
+            validationErrors.push(`${excelRowNumber}行目: 苗字カナ「${lastNameKanaRaw}」はカタカナで入力してください`);
             rowHasError = true;
         }
         if (firstNameKana && !katakanaRegex.test(firstNameKana.replace(/[\s　]/g, ''))) {
-            validationErrors.push(`${excelRowNumber}行目: 名前カナ「${firstNameKana}」はカタカナで入力してください`);
+            validationErrors.push(`${excelRowNumber}行目: 名前カナ「${firstNameKanaRaw}」はカタカナで入力してください`);
             rowHasError = true;
         }
 
         // 7. Email
         const email = String(rowData['メールアドレス(必須)'] || '').trim();
-        if (email) {
-            if (hasFullWidth(email)) {
-                validationErrors.push(`${excelRowNumber}行目: メールアドレスに全角文字が含まれています`);
-                rowHasError = true;
-            } else if (!/^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
-                validationErrors.push(`${excelRowNumber}行目: メールアドレスの形式が正しくありません`);
-                rowHasError = true;
-            } else if (processedEmails.has(email.toLowerCase())) {
-                // ファイル内でメールアドレスが重複している場合
-                validationErrors.push(`${excelRowNumber}行目: メールアドレス「${email}」がファイル内で重複しています`);
-                rowHasError = true;
-            }
+        if (!email) {
+            validationErrors.push(`${excelRowNumber}行目: メールアドレス(必須)が未入力です`);
+            rowHasError = true;
+        } else if (hasFullWidth(email)) {
+            validationErrors.push(`${excelRowNumber}行目: メールアドレスに全角文字が含まれています`);
+            rowHasError = true;
+        } else if (!/^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+            validationErrors.push(`${excelRowNumber}行目: メールアドレスの形式が正しくありません`);
+            rowHasError = true;
+        } else if (processedEmails.has(email.toLowerCase())) {
+            // ファイル内でメールアドレスが重複している場合
+            validationErrors.push(`${excelRowNumber}行目: メールアドレス「${email}」がファイル内で重複しています`);
+            rowHasError = true;
         }
 
         // 8. Birth Date
