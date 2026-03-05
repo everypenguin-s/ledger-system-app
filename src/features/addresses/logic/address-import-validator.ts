@@ -102,7 +102,9 @@ export const validateAddressImportRow = (
     const address = String(rowData['住所'] || '').trim();
 
     // 7. Phone (TEL, FAX)
-    const tel = toHalfWidth(String(rowData['TEL'] || '')).trim();
+    // 「-」「－」のみの場合は「入力なし」と見なして空文字にする
+    const rawTel = toHalfWidth(String(rowData['TEL'] || '')).trim();
+    const tel = rawTel === '-' ? '' : rawTel;
     if (tel) {
         if (!/^\d{2,4}-\d{2,4}-\d{2,4}$/.test(tel)) {
             errors.push(`${excelRowNumber}行目: TEL「${tel}」は「xxxx-xxxx-xxxx」の形式(各ブロック2~4桁)で入力してください`);
@@ -110,7 +112,8 @@ export const validateAddressImportRow = (
         }
     }
 
-    const fax = toHalfWidth(String(rowData['FAX'] || '')).trim();
+    const rawFax = toHalfWidth(String(rowData['FAX'] || '')).trim();
+    const fax = rawFax === '-' ? '' : rawFax;
     if (fax) {
         if (!/^\d{2,4}-\d{2,4}-\d{2,4}$/.test(fax)) {
             errors.push(`${excelRowNumber}行目: FAX「${fax}」は「xxxx-xxxx-xxxx」の形式(各ブロック2~4桁)で入力してください`);
@@ -151,11 +154,8 @@ export const validateAddressImportRow = (
     }
 
     // 10. Branch Number (to match '枝番')
-    const branchNumber = toHalfWidth(String(rowData['枝番'] || '')).trim();
-    if (branchNumber && !/^[0-9-]+$/.test(branchNumber)) {
-        errors.push(`${excelRowNumber}行目: 枝番「${branchNumber}」は半角数字とハイフンのみ入力可能です`);
-        rowHasError = true;
-    }
+    // 書式制限なし：「枝番」などの日本語文字列も含め任意の文字を受け入れる
+    const branchNumber = String(rowData['枝番'] || '').trim();
 
     // 11. Label Zip (to match '宛名ラベル用〒')
     const labelZip = toHalfWidth(String(rowData['宛名ラベル用〒'] || '')).trim();
@@ -189,7 +189,7 @@ export const validateAddressImportRow = (
         division: String(rowData['事業部'] || ''),
         accountingCode: accountingCode,
         mainPerson: String(rowData['主担当'] || ''),
-        branchNumber: branchNumber,
+        branchNumber: branchNumber, // 任意テキスト（書式制限なし）
         specialNote: '', // ※列は削除されたため空文字固定
         notes: String(rowData['備考'] || ''),
         labelName: String(rowData['宛名ラベル用'] || ''),

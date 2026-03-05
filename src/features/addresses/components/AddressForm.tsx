@@ -305,14 +305,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
             newErrorFields.add('officeName');
             if (!firstErrorField) firstErrorField = officeNameRef.current;
         }
-        if (!formData.zipCode || formData.zipCode.length < 8) { // 3 digits + '-' + 4 digits = 8 chars
-            newErrorFields.add('zipCode');
-            if (!firstErrorField) firstErrorField = zipPart1Ref.current;
-        }
-        if (!formData.address) {
-            newErrorFields.add('address');
-            if (!firstErrorField) firstErrorField = addressRef.current;
-        }
+        // 〒・住所は任意項目のため必須チェックなし
 
         if (isAddressCodeDuplicate) {
             newErrorFields.add('addressCode');
@@ -411,7 +404,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
                     <SectionHeader>連絡先情報</SectionHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <FormLabel required>〒</FormLabel>
+                            <FormLabel>〒</FormLabel>
                             <div className="flex items-center gap-2">
                                 <Input
                                     ref={zipPart1Ref}
@@ -421,7 +414,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
                                     maxLength={3}
                                     className="w-16 text-center"
                                     placeholder="123"
-                                    error={errorFields.has('zipCode')}
                                 />
                                 <span className="text-gray-500">-</span>
                                 <Input
@@ -432,21 +424,17 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
                                     maxLength={4}
                                     className="w-20 text-center"
                                     placeholder="4567"
-                                    error={errorFields.has('zipCode')}
                                 />
                             </div>
-                            {errorFields.has('zipCode') && <FormError>この項目は必須です（ハイフン込み7桁）</FormError>}
                         </div>
                         <div className="md:col-span-2">
-                            <FormLabel required>住所</FormLabel>
+                            <FormLabel>住所</FormLabel>
                             <Input
                                 ref={addressRef}
                                 name="address"
                                 value={formData.address}
                                 onChange={handleChange}
-                                error={errorFields.has('address')}
                             />
-                            {errorFields.has('address') && <FormError>この項目は必須です</FormError>}
                         </div>
                         <div>
                             <FormLabel>ＴＥＬ</FormLabel>
