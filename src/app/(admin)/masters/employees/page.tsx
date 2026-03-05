@@ -34,6 +34,7 @@ import {
   forceDeleteEmployeeByCodeAction,
 } from "@/app/actions/admin_maintenance";
 import { parseAndValidateEmployees } from "../../../../features/employees/logic/employee-import-validator";
+import { recordImportSummaryLog } from "../../../../lib/importLogger";
 import {
   fetchEmployeesPaginatedAction,
   fetchEmployeesAllAction,
@@ -172,10 +173,11 @@ function EmployeeListContent() {
       return true;
     },
     onImport: async (rows, headers) => {
+      const importStartTime = new Date().toISOString();
       setIsSyncing(true);
       try {
         const { validEmployees: importData, errors: validationErrors } =
-          parseAndValidateEmployees(rows, headers);
+          parseAndValidateEmployees(rows, headers, areas, addresses);
 
         // If there are validation errors from parsing, show them and stop.
         if (validationErrors.length > 0) {
@@ -236,6 +238,8 @@ function EmployeeListContent() {
 
           if (result.failureCount === 0) {
             showToast(`インポート成功: ${result.successCount}件`, "success");
+            // インポートログを1件にまとめる
+            await recordImportSummaryLog('employees', importStartTime, result.successCount, user?.name, user?.code);
           } else if (result.successCount === 0) {
             // All failed
             setIsSyncing(false); // ダイアログ表示前にオーバーレイを解除

@@ -30,6 +30,7 @@ import { useServerDataTable } from "../../../../hooks/useServerDataTable";
 import { useCSVExport } from "../../../../hooks/useCSVExport";
 import { useFileImport } from "../../../../hooks/useFileImport";
 import { logger } from "../../../../lib/logger";
+import { recordImportSummaryLog } from "../../../../lib/importLogger";
 import { validateAddressImportRow } from "../../../../features/addresses/logic/address-import-validator";
 import {
   fetchAddressesPaginatedAction,
@@ -173,6 +174,7 @@ function AddressListContent() {
       return true;
     },
     onImport: async (rows, fileHeaders) => {
+      const importStartTime = new Date().toISOString();
       setIsSyncing(true);
       try {
         let successCount = 0;
@@ -285,6 +287,8 @@ function AddressListContent() {
             "success",
           );
         }
+        // インポートログを1件にまとめる
+        await recordImportSummaryLog('addresses', importStartTime, successCount, user?.name, user?.code);
         refetch();
       } finally {
         setIsSyncing(false);

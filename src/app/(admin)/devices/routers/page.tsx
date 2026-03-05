@@ -33,6 +33,7 @@ import { useServerDataTable } from "../../../../hooks/useServerDataTable";
 import { useCSVExport } from "../../../../hooks/useCSVExport";
 import { useFileImport } from "../../../../hooks/useFileImport";
 import { logger } from "../../../../lib/logger";
+import { recordImportSummaryLog } from "../../../../lib/importLogger";
 import {
   fetchRoutersPaginatedAction,
   fetchRoutersAllAction,
@@ -171,6 +172,7 @@ function RouterListContent() {
       return true;
     },
     onImport: async (rows, fileHeaders) => {
+      const importStartTime = new Date().toISOString();
       setIsSyncing(true);
       try {
         const allRoutersRaw = await fetchRoutersAllAction();
@@ -401,6 +403,8 @@ function RouterListContent() {
             "success",
           );
         }
+        // インポートログを1件にまとめる
+        await recordImportSummaryLog('routers', importStartTime, successCount, user?.name, user?.code);
         refetch();
       } finally {
         setIsSyncing(false);

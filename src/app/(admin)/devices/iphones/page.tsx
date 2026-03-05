@@ -22,6 +22,7 @@ import { mapIPhoneFromDb } from '../../../../features/context/DataContext';
 import { useCSVExport } from '../../../../hooks/useCSVExport';
 import { useFileImport } from '../../../../hooks/useFileImport';
 import { logger } from '../../../../lib/logger';
+import { recordImportSummaryLog } from '../../../../lib/importLogger';
 
 export default function IPhoneListPage() {
     const { user } = useAuth();
@@ -146,6 +147,7 @@ function IPhoneListContent() {
             return true;
         },
         onImport: async (rows, fileHeaders) => {
+            const importStartTime = new Date().toISOString();
             setIsSyncing(true);
             try {
                 const allIPhonesRaw = await fetchIPhonesAllAction();
@@ -318,6 +320,8 @@ function IPhoneListContent() {
                 if (successCount > 0 && errorCount === 0) {
                     showToast(`インポート完了 - 成功: ${successCount}件 / 失敗: ${errorCount}件`, 'success');
                 }
+                // インポートログを1件にまとめる
+                await recordImportSummaryLog('iphones', importStartTime, successCount, user?.name, user?.code);
                 refetch();
             } finally {
                 // エラー・正常終了・バリデーションエラーどの経路でも必ず解除する

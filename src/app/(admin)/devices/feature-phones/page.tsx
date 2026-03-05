@@ -30,6 +30,7 @@ import { useServerDataTable } from "../../../../hooks/useServerDataTable";
 import { useCSVExport } from "../../../../hooks/useCSVExport";
 import { useFileImport } from "../../../../hooks/useFileImport";
 import { logger } from "../../../../lib/logger";
+import { recordImportSummaryLog } from "../../../../lib/importLogger";
 import {
   fetchFeaturePhonesPaginatedAction,
   fetchFeaturePhonesAllAction,
@@ -166,6 +167,7 @@ function FeaturePhoneListContent() {
       return true;
     },
     onImport: async (rows, fileHeaders) => {
+      const importStartTime = new Date().toISOString();
       setIsSyncing(true);
       try {
         const allFeaturePhonesRaw = await fetchFeaturePhonesAllAction();
@@ -375,6 +377,8 @@ function FeaturePhoneListContent() {
             "success",
           );
         }
+        // インポートログを1件にまとめる
+        await recordImportSummaryLog('featurephones', importStartTime, successCount, user?.name, user?.code);
         refetch();
       } finally {
         setIsSyncing(false);
