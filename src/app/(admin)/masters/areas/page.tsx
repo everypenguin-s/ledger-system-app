@@ -28,6 +28,7 @@ import { useServerDataTable } from "../../../../hooks/useServerDataTable";
 import { useCSVExport } from "../../../../hooks/useCSVExport";
 import { useFileImport } from "../../../../hooks/useFileImport";
 import { logger } from "../../../../lib/logger";
+import { recordImportSummaryLog } from "../../../../lib/importLogger";
 import {
   fetchAreasPaginatedAction,
   fetchAreasAllAction,
@@ -138,6 +139,7 @@ function AreaListContent() {
       return true;
     },
     onImport: async (rows, fileHeaders) => {
+      const importStartTime = new Date().toISOString();
       setIsSyncing(true);
       try {
         const existingCodes = new Set(areas.map((a) => a.areaCode));
@@ -295,6 +297,8 @@ function AreaListContent() {
             "success",
           );
         }
+        // インポートログを1件にまとめる
+        await recordImportSummaryLog('areas', importStartTime, successCount, user?.name, user?.code);
         refetch();
       } finally {
         setIsSyncing(false);
@@ -474,7 +478,7 @@ function AreaListContent() {
   };
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
+    <div className="space-y-4 h-full flex flex-col min-w-0">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-text-main">エリアマスタ</h1>
         <div className="flex gap-2">
@@ -547,6 +551,7 @@ function AreaListContent() {
         rowClassName={(item) =>
           item.id === highlightId ? "bg-red-100 hover:bg-red-200" : ""
         }
+        containerClassName="max-h-[600px] overflow-auto border-b border-border"
         columns={[
           {
             header: (
