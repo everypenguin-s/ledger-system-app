@@ -75,8 +75,10 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
 
     const areaOptions = useMemo(() => {
         return areas.map(area => ({
-            value: area.areaCode,
+            value: area.areaName,
             label: area.areaName,
+            displayId: area.areaCode,
+            searchText: area.areaCode,
         }));
     }, [areas]);
 
@@ -85,11 +87,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
     // Initialize from initialData
     useEffect(() => {
         if (initialData) {
-            // Check if initialData.area is a name and convert to code if possible
+            // Check if initialData.area is a code and convert to name if possible
             let areaValue = initialData.area;
-            const matchedArea = areas.find(a => a.areaName === initialData.area);
+            const matchedArea = areas.find(a => a.areaCode === initialData.area || a.areaName === initialData.area);
             if (matchedArea) {
-                areaValue = matchedArea.areaCode;
+                areaValue = matchedArea.areaName;
             }
 
             setFormData({
@@ -525,7 +527,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
                             />
                         </div>
                         <div>
-                            <FormLabel>エリアコード</FormLabel>
+                            <FormLabel>エリア名</FormLabel>
                             <SearchableSelect
                                 options={areaOptions}
                                 value={formData.area}

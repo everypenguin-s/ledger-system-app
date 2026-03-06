@@ -130,26 +130,27 @@ export const validateAddressImportRow = (
 
     // 9. Area - エリア名を1次ソースとして検索
     const rawAreaInput = toHalfWidth(String(rowData['エリア名'] || '')).trim();
-    let resolvedAreaCode = '';
+    const exactAreaInput = String(rowData['エリア名'] || '').trim();
+    let resolvedAreaName = '';
     if (rawAreaInput) {
         if (areaList && areaList.length > 0) {
             // まずエリアコードとして完全一致で探す
             const byCode = areaList.find(a => a.areaCode === rawAreaInput);
             if (byCode) {
-                resolvedAreaCode = byCode.areaCode;
+                resolvedAreaName = byCode.areaName;
             } else {
                 // エリア名で探す
-                const byName = areaList.find(a => a.areaName === rawAreaInput);
+                const byName = areaList.find(a => a.areaName === exactAreaInput || a.areaName === rawAreaInput);
                 if (byName) {
-                    resolvedAreaCode = byName.areaCode;
+                    resolvedAreaName = byName.areaName;
                 } else {
-                    errors.push(`${excelRowNumber}行目: エリア「${rawAreaInput}」はエリアマスタに存在しません`);
+                    errors.push(`${excelRowNumber}行目: エリア「${exactAreaInput}」はエリアマスタに存在しません`);
                     rowHasError = true;
                 }
             }
         } else {
             // areaList が渡されていない場合は値をそのまま使用
-            resolvedAreaCode = rawAreaInput;
+            resolvedAreaName = exactAreaInput;
         }
     }
 
@@ -180,7 +181,7 @@ export const validateAddressImportRow = (
     const newAddress: Omit<Address, 'id'> = {
         addressCode: officeCode,
         officeName: officeName,
-        area: resolvedAreaCode,
+        area: resolvedAreaName,
         no: no,
         zipCode: formatZipCode(zip || ''),
         address: address,
