@@ -43,13 +43,14 @@ export const validateAddressImportRow = (
         errors.push(`${excelRowNumber}行目: 事業所コードが空です`);
         rowHasError = true;
     } else {
-        const is6Digits = /^\d{6}$/.test(officeCode);
-        const isFormatted = /^\d{4}-\d{2}$/.test(officeCode);
+        const isDigitsOnly = /^\d{6,7}$/.test(officeCode);
+        const isFormatted = /^\d{4,5}-\d{2}$/.test(officeCode);
 
-        if (is6Digits) {
-            officeCode = `${officeCode.slice(0, 4)}-${officeCode.slice(4)}`;
+        if (isDigitsOnly) {
+            const splitPos = officeCode.length - 2;
+            officeCode = `${officeCode.slice(0, splitPos)}-${officeCode.slice(splitPos)}`;
         } else if (!isFormatted) {
-            errors.push(`${excelRowNumber}行目: 事業所コード「${officeCode}」は「xxxx-xx」または「xxxxxx(6桁)」の形式で入力してください`);
+            errors.push(`${excelRowNumber}行目: 事業所コード「${officeCode}」は「xxxx(x)-xx」または「xxxxxx(6~7桁)」の形式で入力してください`);
             rowHasError = true;
         }
 

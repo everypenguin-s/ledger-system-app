@@ -123,15 +123,34 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
 export async function fetchEmployeesAllAction(searchTerm?: string) {
     await checkAuth();
     const admin = getSupabaseAdmin();
-    let query = admin.from('employees').select('*').order('employee_code', { ascending: true });
-    
-    if (searchTerm) {
-        query = query.or(`employee_code.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,name_kana.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+
+    const allData: any[] = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+
+    while (true) {
+        let query = admin.from('employees')
+            .select('*')
+            .order('employee_code', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+        
+        if (searchTerm) {
+            query = query.or(`employee_code.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,name_kana.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+
+        if (data && data.length > 0) {
+            allData.push(...data);
+            if (data.length < PAGE_SIZE) break;
+            offset += PAGE_SIZE;
+        } else {
+            break;
+        }
     }
 
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data;
+    return allData;
 }
 
 // --- Addresses (Offices) ---
@@ -183,15 +202,34 @@ export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm
 export async function fetchAddressesAllAction(searchTerm?: string) {
     await checkAuth();
     const admin = getSupabaseAdmin();
-    let query = admin.from('addresses').select('*').order('no', { ascending: true });
     
-    if (searchTerm) {
-        query = query.or(`no.ilike.%${searchTerm}%,address_code.ilike.%${searchTerm}%,office_name.ilike.%${searchTerm}%,tel.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%,supervisor.ilike.%${searchTerm}%`);
+    const allData: any[] = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+
+    while (true) {
+        let query = admin.from('addresses')
+            .select('*')
+            .order('no', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+        
+        if (searchTerm) {
+            query = query.or(`no.ilike.%${searchTerm}%,address_code.ilike.%${searchTerm}%,office_name.ilike.%${searchTerm}%,tel.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%,supervisor.ilike.%${searchTerm}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+
+        if (data && data.length > 0) {
+            allData.push(...data);
+            if (data.length < PAGE_SIZE) break;
+            offset += PAGE_SIZE;
+        } else {
+            break;
+        }
     }
 
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data;
+    return allData;
 }
 
 // --- Areas ---
@@ -234,13 +272,32 @@ export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, so
 export async function fetchAreasAllAction(searchTerm?: string) {
     await checkAuth();
     const admin = getSupabaseAdmin();
-    let query = admin.from('areas').select('*').order('area_code', { ascending: true });
-    
-    if (searchTerm) {
-        query = query.or(`area_code.ilike.%${searchTerm}%,area_name.ilike.%${searchTerm}%`);
+
+    const allData: any[] = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+
+    while (true) {
+        let query = admin.from('areas')
+            .select('*')
+            .order('area_code', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+        
+        if (searchTerm) {
+            query = query.or(`area_code.ilike.%${searchTerm}%,area_name.ilike.%${searchTerm}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+
+        if (data && data.length > 0) {
+            allData.push(...data);
+            if (data.length < PAGE_SIZE) break;
+            offset += PAGE_SIZE;
+        } else {
+            break;
+        }
     }
 
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data;
+    return allData;
 }

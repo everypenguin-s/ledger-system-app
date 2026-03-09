@@ -108,17 +108,36 @@ export async function fetchEmployeesAction() {
 
     // 2. Use Admin Client to Fetch All (Bypass RLS)
     const supabaseAdmin = getSupabaseAdmin();
-    const { data, error } = await supabaseAdmin
-        .from('employees')
-        .select('*')
-        .order('employee_code', { ascending: true });
+    
+    // Supabase default limit is 1000. Fetch all in chunks.
+    const allData: any[] = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
 
-    if (error) {
-        console.error('Fetch Employees Action Error:', error);
-        throw new Error(error.message);
+    while (true) {
+        const { data, error } = await supabaseAdmin
+            .from('employees')
+            .select('*')
+            .order('employee_code', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+
+        if (error) {
+            console.error('Fetch Employees Action Error:', error);
+            throw new Error(error.message);
+        }
+
+        if (data && data.length > 0) {
+            allData.push(...data);
+            if (data.length < PAGE_SIZE) {
+                break; // Last page
+            }
+            offset += PAGE_SIZE;
+        } else {
+            break; // No more data
+        }
     }
 
-    return data;
+    return allData;
 }
 
 export async function updateEmployeeAction(id: string, data: any) {

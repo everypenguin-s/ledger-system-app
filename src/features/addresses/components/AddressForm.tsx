@@ -299,7 +299,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
         let firstErrorField: HTMLElement | null = null;
 
         // Required Field Check
-        if (!formData.addressCode || !/^\d{4}-\d{2}$/.test(formData.addressCode)) {
+        if (!formData.addressCode || !/^\d{4,5}-\d{2}$/.test(formData.addressCode)) {
             newErrorFields.add('addressCode');
             if (!firstErrorField) firstErrorField = codePart1Ref.current;
         }
@@ -356,9 +356,9 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
                                     name="part1"
                                     value={addressCodeParts.part1}
                                     onChange={handleAddressCodeChange}
-                                    maxLength={4}
-                                    className="w-20 text-center"
-                                    placeholder="1234"
+                                    maxLength={5}
+                                    className="w-24 text-center"
+                                    placeholder="12345"
                                     error={errorFields.has('addressCode')}
                                     readOnly={!!initialData}
                                 />
@@ -376,7 +376,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ initialData, onSubmit,
                                 />
                             </div>
                             {errorFields.has('addressCode') && !formData.addressCode && <FormError>この項目は必須です</FormError>}
-                            {errorFields.has('addressCode') && formData.addressCode && !/^\d{4}-\d{2}$/.test(formData.addressCode) && <FormError>形式が正しくありません (xxxx-xx)</FormError>}
+                            {errorFields.has('addressCode') && formData.addressCode && !/^\d{4,5}-\d{2}$/.test(formData.addressCode) && <FormError>形式が正しくありません (xxxx(x)-xx)</FormError>}
                             {errorFields.has('addressCode') && formData.addressCode === initialData?.addressCode && addresses.some(a => a.addressCode === formData.addressCode && (!initialData || a.id !== initialData.id)) && (
                                 <FormError>既に登録されている事業所コードです</FormError>
                             )}

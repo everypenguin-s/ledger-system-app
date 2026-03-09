@@ -273,15 +273,55 @@ export async function fetchRoutersAllAction(searchTerm?: string) {
 export async function fetchAreasAction() {
     await checkAuth();
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin.from('areas').select('*').order('area_code', { ascending: true });
-    if (error) throw new Error(error.message);
-    return data;
+    
+    const allData: any[] = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+
+    while (true) {
+        const { data, error } = await admin.from('areas')
+            .select('*')
+            .order('area_code', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+        
+        if (error) throw new Error(error.message);
+
+        if (data && data.length > 0) {
+            allData.push(...data);
+            if (data.length < PAGE_SIZE) break;
+            offset += PAGE_SIZE;
+        } else {
+            break;
+        }
+    }
+
+    return allData;
 }
 
 export async function fetchAddressesAction() {
     await checkAuth();
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin.from('addresses').select('*').order('address_code', { ascending: true });
-    if (error) throw new Error(error.message);
-    return data;
+
+    const allData: any[] = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+
+    while (true) {
+        const { data, error } = await admin.from('addresses')
+            .select('*')
+            .order('address_code', { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+        
+        if (error) throw new Error(error.message);
+
+        if (data && data.length > 0) {
+            allData.push(...data);
+            if (data.length < PAGE_SIZE) break;
+            offset += PAGE_SIZE;
+        } else {
+            break;
+        }
+    }
+
+    return allData;
 }
