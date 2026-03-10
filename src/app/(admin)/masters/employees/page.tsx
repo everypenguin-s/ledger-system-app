@@ -110,6 +110,7 @@ function EmployeeListContent() {
     fetchData: fetchEmployeesPaginatedAction as any,
     mapData: mapEmployeeFromDb,
     initialPageSize: 15,
+    highlightId: highlightId || undefined,
   });
 
   const { handleExport } = useCSVExport<Employee>();

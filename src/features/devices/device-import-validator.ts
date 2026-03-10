@@ -94,7 +94,7 @@ export const validateDeviceImportRow = (
 
     // Office Code
     const officeCode = String(row['事業所コード'] || '').trim();
-    if (officeCode) {
+    if (officeCode && officeCode !== '返却') {
         if (!/^[0-9-]+$/.test(officeCode)) {
             errors.push(`${rowNumber}行目: 事業所コードに不正な文字が含まれています（半角数字と「-」のみ使用可能）`);
         } else if (validOfficeCodes && !validOfficeCodes.has(officeCode)) {
@@ -249,7 +249,7 @@ export const validateRouterImportRow = (
     }
 
     const officeCode = String(row['事業所コード'] || '').trim();
-    if (officeCode) {
+    if (officeCode && officeCode !== '返却') {
         if (!/^[0-9-]+$/.test(officeCode)) {
             errors.push(`${rowNumber}行目: 事業所コードに不正な文字が含まれています（半角数字と「-」のみ使用可能）`);
         } else if (validOfficeCodes && !validOfficeCodes.has(officeCode)) {
@@ -314,7 +314,7 @@ export const validateTabletImportRow = (
         }
     }
 
-    const rawModelNumber = String(row['型番'] || '');
+    const rawModelNumber = String(row['型番'] || '').trim();
     if (rawModelNumber && /[^\x20-\x7E]/.test(rawModelNumber)) {
         errors.push(`${rowNumber}行目: 型番「${rawModelNumber}」に全角文字が含まれています。半角文字のみ使用可能です。`);
     }
@@ -326,7 +326,7 @@ export const validateTabletImportRow = (
     }
 
     const officeCode = String(row['事業所コード'] || '').trim();
-    if (officeCode) {
+    if (officeCode && officeCode !== '返却') {
         if (!/^[0-9-]+$/.test(officeCode)) {
             errors.push(`${rowNumber}行目: 事業所コード「${officeCode}」に不正な文字が含まれています（半角数字とハイフンのみ使用可能）`);
         } else if (validOfficeCodes && !validOfficeCodes.has(officeCode)) {

@@ -91,7 +91,8 @@ function TabletListContent() {
     } = useServerDataTable<Tablet>({
         fetchData: fetchTabletsPaginatedAction as any,
         mapData: mapTabletFromDb,
-        initialPageSize: 15
+        initialPageSize: 15,
+        highlightId: highlightId || undefined,
     });
 
     const { handleExport } = useCSVExport<Tablet>();

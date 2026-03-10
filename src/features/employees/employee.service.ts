@@ -51,7 +51,7 @@ export const employeeService = {
     },
 
     saveEmployee: async (item: EmployeeInput & { id?: string }, isUpdate: boolean = false) => {
-        if (item.profileImage && typeof window !== 'undefined') {
+        if (item.profileImage && typeof window !== 'undefined' && item.id) {
             try {
                 localStorage.setItem(`profile_image_${item.id}`, item.profileImage);
             } catch (e: any) {

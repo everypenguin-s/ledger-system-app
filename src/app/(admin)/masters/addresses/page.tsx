@@ -101,6 +101,7 @@ function AddressListContent() {
     fetchData: fetchAddressesPaginatedAction as any,
     mapData: mapAddressFromDb,
     initialPageSize: 15,
+    highlightId: highlightId || undefined,
   });
 
   const { handleExport } = useCSVExport<Address>();

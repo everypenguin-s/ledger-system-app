@@ -105,6 +105,7 @@ function RouterListContent() {
     fetchData: fetchRoutersPaginatedAction as any,
     mapData: mapRouterFromDb,
     initialPageSize: 15,
+    highlightId: highlightId || undefined,
   });
 
   const { handleExport } = useCSVExport<Router>();

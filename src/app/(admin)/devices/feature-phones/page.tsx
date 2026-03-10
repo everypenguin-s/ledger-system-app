@@ -106,6 +106,7 @@ function FeaturePhoneListContent() {
     fetchData: fetchFeaturePhonesPaginatedAction as any,
     mapData: mapFeaturePhoneFromDb,
     initialPageSize: 15,
+    highlightId: highlightId || undefined,
   });
 
   const { handleExport } = useCSVExport<FeaturePhone>();

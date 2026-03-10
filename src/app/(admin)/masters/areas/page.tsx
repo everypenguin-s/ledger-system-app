@@ -95,6 +95,7 @@ function AreaListContent() {
     fetchData: fetchAreasPaginatedAction as any,
     mapData: mapAreaFromDb,
     initialPageSize: 15,
+    highlightId: highlightId || undefined,
   });
 
   const { handleExport } = useCSVExport<Area>();

@@ -70,7 +70,8 @@ function IPhoneListContent() {
     } = useServerDataTable<IPhone>({
         fetchData: fetchIPhonesPaginatedAction as any,
         mapData: mapIPhoneFromDb,
-        initialPageSize: 15
+        initialPageSize: 15,
+        highlightId: highlightId || undefined,
     });
 
     const { handleExport } = useCSVExport<IPhone>();
