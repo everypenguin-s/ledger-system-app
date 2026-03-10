@@ -248,7 +248,10 @@ export const validateRouterImportRow = (
         }
     }
 
-    const officeCode = String(row['事業所コード'] || '').trim();
+    let officeCode = String(row['事業所コード'] || '').trim();
+    if (officeCode === '-') {
+        officeCode = '';
+    }
     if (officeCode && officeCode !== '返却') {
         if (!/^[0-9-]+$/.test(officeCode)) {
             errors.push(`${rowNumber}行目: 事業所コードに不正な文字が含まれています（半角数字と「-」のみ使用可能）`);
@@ -257,8 +260,10 @@ export const validateRouterImportRow = (
         }
     }
 
-    const validateIpFormat = (value: string, fieldName: string) => {
-        if (!value || value.trim() === '') return;
+    const validateIpFormat = (rawValue: string, fieldName: string) => {
+        if (!rawValue) return;
+        const value = rawValue.trim();
+        if (value === '') return;
         const ipRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
         if (!ipRegex.test(value)) {
             errors.push(`${rowNumber}行目: ${fieldName}「${value}」の形式が正しくありません`);

@@ -256,7 +256,8 @@ function RouterListContent() {
 
           const rawStatus = String(rowData["状況"] || "").trim();
           const employeeCode = String(rowData["社員コード"] || "").trim();
-          const addressCode = String(rowData["事業所コード"] || "").trim();
+          let addressCode = String(rowData["事業所コード"] || "").trim();
+          if (addressCode === "-") addressCode = "";
 
           let finalStatus: any;
           if (employeeCode || addressCode) {
@@ -316,10 +317,10 @@ function RouterListContent() {
             terminalCode: terminalCode,
             employeeCode: employeeCode,
             addressCode: addressCode,
-            ipAddress: String(rowData["IPアドレス"] || ""),
-            subnetMask: String(rowData["サブネットマスク"] || ""),
-            startIp: String(rowData["開始IP"] || ""),
-            endIp: String(rowData["終了IP"] || ""),
+            ipAddress: String(rowData["IPアドレス"] || "").trim(),
+            subnetMask: String(rowData["サブネットマスク"] || "").trim(),
+            startIp: String(rowData["開始IP"] || "").trim(),
+            endIp: String(rowData["終了IP"] || "").trim(),
             biller: String(rowData["請求元"] || ""),
             cost:
               parseInt(String(rowData["費用"] || "").replace(/[^0-9]/g, "")) || 0,
