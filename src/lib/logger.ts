@@ -1,4 +1,4 @@
-import { supabase as staticSupabase } from './supabaseClient';
+import { getSupabase as getStaticSupabase } from './supabaseClient';
 import { getSupabaseBrowserClient } from './supabase/client';
 import { createLogAction } from '../app/actions/log';
 
@@ -48,7 +48,7 @@ class LoggerService {
     private client: any = null;
 
     protected getClient() {
-        if (typeof window === 'undefined') return staticSupabase;
+        if (typeof window === 'undefined') return getStaticSupabase();
         return getSupabaseBrowserClient();
     }
 

@@ -1,5 +1,5 @@
 import { getSupabaseBrowserClient } from './supabase/client';
-import { supabase as staticSupabase } from './supabaseClient';
+import { getSupabase as getStaticSupabase } from './supabaseClient';
 
 interface SystemErrorLogEntry {
     errorMessage: string;
@@ -11,7 +11,7 @@ interface SystemErrorLogEntry {
 export const logSystemError = async (entry: SystemErrorLogEntry) => {
     try {
         // Use client component client if in browser, otherwise fallback to static client
-        const supabase = typeof window !== 'undefined' ? getSupabaseBrowserClient() : staticSupabase;
+        const supabase = typeof window !== 'undefined' ? getSupabaseBrowserClient() : getStaticSupabase();
 
         // Try to get the current user ID if not provided
         let userId = entry.userId;
