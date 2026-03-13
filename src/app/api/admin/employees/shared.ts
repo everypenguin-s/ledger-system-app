@@ -10,7 +10,12 @@ export type UpsertResult = {
     code?: string;
 };
 
-export async function upsertEmployeeLogic(supabaseAdmin: SupabaseClient, data: any, actorUser?: any): Promise<UpsertResult> {
+export async function upsertEmployeeLogic(
+    supabaseAdmin: SupabaseClient,
+    data: any,
+    actorUser?: any,
+    authCache?: Map<string, string> // email -> id
+): Promise<UpsertResult> {
     const {
         employee_code,
         email,
@@ -93,12 +98,23 @@ export async function upsertEmployeeLogic(supabaseAdmin: SupabaseClient, data: a
                     targetAuthId = existingEmpByEmail.auth_id;
                     authAction = 'reuse_existing';
                 } else {
-                    // DB に auth_id がない場合はページネーションで全件検索（フォールバック）
-                    let found = false;
+                    // DB に auth_id がない場合は、Auth から検索して紐付けを試みる
+                    // ユーザー数が多い（8500件超）環境では非常に低速になるため、一度で見つかるよう検索
                     let page = 1;
+                    let found = false;
+
+                    // 1. キャッシュがあればそれを利用
+                    if (authCache && authCache.has(authEmail)) {
+                        targetAuthId = authCache.get(authEmail)!;
+                        authAction = 'reuse_existing';
+                        found = true;
+                    }
+
+                    // 2. キャッシュに無い場合はフォールバックとして Auth API を叩く
                     while (!found) {
                         const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-                        if (listError) throw new Error(`Auth lookup failed: ${JSON.stringify({ url: listError.message })}`);
+                        if (listError) throw new Error(`Auth lookup failed: ${listError.message}`);
+                        
                         const match = users.find(u => u.email?.toLowerCase() === authEmail);
                         if (match) {
                             targetAuthId = match.id;
@@ -108,8 +124,9 @@ export async function upsertEmployeeLogic(supabaseAdmin: SupabaseClient, data: a
                         if (users.length < 1000) break;
                         page++;
                     }
+                    
                     if (!found) {
-                        throw new Error(`Auth lookup failed: email ${authEmail} が Auth に見つかりません`);
+                         throw new Error(`Auth lookup failed: email ${authEmail} が Auth に見つかりません`);
                     }
                 }
             } else {

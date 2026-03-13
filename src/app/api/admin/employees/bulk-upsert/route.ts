@@ -15,6 +15,34 @@ const getSupabaseAdmin = () => {
     });
 };
 
+// モジュールレベルのキャッシュ（Vercel 等のサーバーレス環境でも、インスタンスが生きている間は有効）
+let globalAuthCache: Map<string, string> | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 10 * 60 * 1000; // 10分間有効
+
+async function getAuthCache(supabaseAdmin: any) {
+    const now = Date.now();
+    if (globalAuthCache && (now - lastCacheTime < CACHE_TTL)) {
+        return globalAuthCache;
+    }
+
+    const cache = new Map<string, string>();
+    let page = 1;
+    while (true) {
+        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) break;
+        users.forEach((u: any) => {
+            if (u.email) cache.set(u.email.toLowerCase(), u.id);
+        });
+        if (users.length < 1000) break;
+        page++;
+    }
+
+    globalAuthCache = cache;
+    lastCacheTime = now;
+    return cache;
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -52,6 +80,9 @@ export async function POST(req: Request) {
         }
 
         const supabaseAdmin = getSupabaseAdmin();
+
+        // Auth ユーザーキャッシュの取得（パフォーマンス最適化）
+        const authCache = await getAuthCache(supabaseAdmin);
 
         // =========================================================
         // インポート前: メールアドレスの DB 重複チェック
@@ -106,7 +137,8 @@ export async function POST(req: Request) {
         // Sequential is safer for auth rate limits.
         for (const emp of employees) {
             // We pass 'actorUser' so that shared logic can patch the audit log after upsert
-            const res = await upsertEmployeeLogic(supabaseAdmin, emp, actorUser);
+            // Pass authCache to avoid redundant listUsers calls
+            const res = await upsertEmployeeLogic(supabaseAdmin, emp, actorUser, authCache);
             results.push(res);
         }
 
