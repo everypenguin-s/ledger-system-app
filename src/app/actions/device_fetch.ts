@@ -73,8 +73,36 @@ export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('iphones').select('id'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            managementNumber: 'management_number',
+            phoneNumber: 'phone_number',
+            modelName: 'model_name',
+            contractYears: 'contract_years',
+            carrier: 'carrier',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code',
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'management_number', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'iphones', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`management_number.ilike.%${searchTerm}%,phone_number.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     let query = applyFiltersAndSort(admin.from('iphones').select('*', { count: 'exact' }));
@@ -150,8 +178,33 @@ export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('tablets').select('id'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            terminalCode: 'terminal_code',
+            contractYears: 'contract_years',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code',
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'terminal_code', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'tablets', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`terminal_code.ilike.%${searchTerm}%,maker.ilike.%${searchTerm}%,model_number.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     console.log(`[Server] tablets pagination requested. Page=${page}, pageSize=${pageSize}, highlightId=${highlightId}, returning highlightPage=${highlightPage}`);
@@ -229,8 +282,36 @@ export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, search
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('featurephones').select('id'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            managementNumber: 'management_number',
+            phoneNumber: 'phone_number',
+            modelName: 'model_name',
+            contractYears: 'contract_years',
+            carrier: 'carrier',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code', 
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'management_number', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'featurephones', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`management_number.ilike.%${searchTerm}%,phone_number.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     let query = applyFiltersAndSort(admin.from('featurephones').select('*', { count: 'exact' }));
@@ -306,8 +387,36 @@ export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('routers').select('id'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            no: 'no',
+            terminalCode: 'terminal_code',
+            contractYears: 'contract_years',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code',
+            simNumber: 'sim_number',
+            ipAddress: 'ip_address'
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'no', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'routers', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`no.ilike.%${searchTerm}%,terminal_code.ilike.%${searchTerm}%,sim_number.ilike.%${searchTerm}%,ip_address.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     let query = applyFiltersAndSort(admin.from('routers').select('*', { count: 'exact' }));
