@@ -81,78 +81,46 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
         query = query.or(`employee_code.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,name_kana.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
 
-    const codeSort = sortCriteria?.find(s => s.key === 'code');
-    
-    // In all cases, if we sort by code, or have no sort criteria, we JS-sort allData
-    // If we JS-sort allData, we can easily find highlightPage
-    
-    if (codeSort || !sortCriteria || sortCriteria.length === 0) {
-        const { data: allData, count, error } = await query.order('employee_code', { ascending: true });
-        if (error) throw new Error(error.message);
-
-        const sorted = (allData || []).sort((a: any, b: any) => {
-            const aNum = parseInt(a.employee_code, 10);
-            const bNum = parseInt(b.employee_code, 10);
-            const isAsc = codeSort ? codeSort.order === 'asc' : true;
-            if (!isNaN(aNum) && !isNaN(bNum)) {
-                return isAsc ? aNum - bNum : bNum - aNum;
-            }
-            return isAsc 
-                ? (a.employee_code || '').localeCompare(b.employee_code || '')
-                : (b.employee_code || '').localeCompare(a.employee_code || '');
-        });
-
-        let highlightPage: number | undefined;
-        if (highlightId) {
-            const index = sorted.findIndex((item: any) => item.id === highlightId);
-            if (index !== -1) {
-                highlightPage = Math.ceil((index + 1) / pageSize);
-            }
+    // Consolidate sorting and pagination to DB-side for performance
+    const applyFiltersAndSort = (baseQuery: any) => {
+        let q = baseQuery;
+        if (searchTerm) {
+            q = q.or(`employee_code.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,name_kana.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
         }
 
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize;
-        return {
-            data: sorted.slice(from, to),
-            totalCount: count || 0,
-            highlightPage
-        };
-    } else {
-        // Handle DB sort
-        const applyFiltersAndSort = (baseQuery: any) => {
-            let q = baseQuery;
-            if (searchTerm) {
-                q = q.or(`employee_code.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,name_kana.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
-            }
+        if (sortCriteria && sortCriteria.length > 0) {
             for (const { key, order } of sortCriteria) {
                 const dbKey = keyMap[key] || key;
                 q = q.order(dbKey, { ascending: order === 'asc', nullsFirst: false });
             }
-            return q;
-        };
-
-        let highlightPage: number | undefined;
-        if (highlightId) {
-            const idQuery = applyFiltersAndSort(admin.from('employees').select('id'));
-            const { data: allIds } = await idQuery;
-            const index = allIds?.findIndex((item: any) => item.id === highlightId) ?? -1;
-            if (index !== -1) {
-                highlightPage = Math.ceil((index + 1) / pageSize);
-            }
+        } else {
+            // Default sort: employee_code
+            q = q.order('employee_code', { ascending: true });
         }
+        return q;
+    };
 
-        query = applyFiltersAndSort(admin.from('employees').select('*', { count: 'exact' }));
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
-        const { data, count, error } = await query.range(from, to);
-        if (error) throw new Error(error.message);
-
-        return {
-            data: data || [],
-            totalCount: count || 0,
-            highlightPage
-        };
+    let highlightPage: number | undefined;
+    if (highlightId) {
+        const idQuery = applyFiltersAndSort(admin.from('employees').select('id'));
+        const { data: allIds } = await idQuery;
+        const index = allIds?.findIndex((item: any) => item.id === highlightId) ?? -1;
+        if (index !== -1) {
+            highlightPage = Math.ceil((index + 1) / pageSize);
+        }
     }
+
+    query = applyFiltersAndSort(admin.from('employees').select('*', { count: 'exact' }));
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, count, error } = await query.range(from, to);
+    if (error) throw new Error(error.message);
+
+    return {
+        data: data || [],
+        totalCount: count || 0,
+        highlightPage
+    };
 }
 
 

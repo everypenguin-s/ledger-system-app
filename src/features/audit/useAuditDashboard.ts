@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import type { DashboardData, KPIStats, DayStat, ActionTypeStat, SeverityStat } from '../../lib/types/audit';
 import type { Log } from '../../lib/types';
 import { logService } from '../logs/log.service';
@@ -12,7 +12,9 @@ type DateRange = 'today' | '7days' | '30days';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export const useAuditDashboard = () => {
+    const supabase = getSupabaseBrowserClient();
     const [data, setData] = useState<DashboardData | null>(null);
+
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState<DateRange>('today');
 

@@ -18,8 +18,15 @@ export async function middleware(req: NextRequest) {
 
     if (isSetup) {
         // Initial setup account can ONLY access employee master
-        // Exempt public paths
-        if (path === '/login' || path.startsWith('/_next') || path.startsWith('/api/auth')) {
+        // Redirect to employee master if they (somehow) try to go to login
+        if (path === '/login') {
+            const redirectUrl = req.nextUrl.clone();
+            redirectUrl.pathname = '/masters/employees';
+            return NextResponse.redirect(redirectUrl);
+        }
+
+        // Exempt public paths or required statics
+        if (path.startsWith('/_next') || path.startsWith('/api/auth')) {
             return res;
         }
 

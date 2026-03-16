@@ -18,8 +18,17 @@ export const getSupabase = () => {
     return supabaseInstance;
 }
 
-// 互換性のためのゲッター（既存の import { supabase } を壊さないため）
+// 互換性のためのゲッター
+// 【警告】クライアントサイドでのトップレベル参照は 'Multiple GoTrueClient instances' 警告の原因となるため制限しています。
+// ブラウザ環境では src/lib/supabase/client.ts の getSupabaseBrowserClient() を使用してください。
 export const supabase = (typeof window === 'undefined') 
-    ? createClient(supabaseUrl, supabaseAnonKey) // サーバーサイドでは今まで通り
-    : null as unknown as SupabaseClient; // クライアントサイドでのトップレベル参照を無効化
+    ? getSupabase() 
+    : new Proxy({} as SupabaseClient, {
+        get(_, prop) {
+            throw new Error(
+                `Supabase client error: Direct access to 'supabase' from supabaseClient.ts is disabled on client-side. ` +
+                `Property '${String(prop)}' was accessed. Please use 'getSupabaseBrowserClient()' instead.`
+            );
+        }
+    });
 

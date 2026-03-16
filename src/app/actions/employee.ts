@@ -204,101 +204,122 @@ export async function deleteEmployeeAction(id: string, version: number) {
     const cookieStore = await cookies();
     const supabase = createServerActionClient({ cookies: () => cookieStore as any });
 
-    // 1. Verify Authentication
-    let currentUser: any = null;
-    const setupUser = await getSetupUserServer();
-    if (setupUser) {
-        currentUser = setupUser;
-    } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            throw new Error('Unauthenticated');
-        }
-        currentUser = user;
-    }
-
-    // 2. Fetch Employee to get Auth ID before deletion
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: employee, error: fetchError } = await supabaseAdmin
-        .from('employees')
-        .select('auth_id, employee_code')
-        .eq('id', id)
-        .single();
-
-    if (fetchError) {
-        throw new Error(`Employee not found: ${fetchError.message}`);
-    }
-
-    // 3. Delete Auth User FIRST (to avoid zombies)
-    if (employee.auth_id) {
-        // Use RPC to bypass immutable audit log triggers
-        const { error: authDeleteError } = await supabaseAdmin.rpc('force_delete_auth_user', { target_user_id: employee.auth_id });
-        if (authDeleteError) {
-            console.error(`Failed to delete Auth User ${employee.auth_id}:`, authDeleteError);
-            throw new Error(`Auth Deletion Failed: ${authDeleteError.message}`); // Stop DB delete
+    try {
+        // 1. Verify Authentication
+        let currentUser: any = null;
+        const setupUser = await getSetupUserServer();
+        if (setupUser) {
+            currentUser = setupUser;
         } else {
-            console.log(`Auth User ${employee.auth_id} deleted successfully.`);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                throw new Error('Unauthenticated');
+            }
+            currentUser = user;
         }
-    } else {
-        // Fallback: If auth_id is missing, try robust search (Email + Code)
-        console.warn(`Employee ${id} (Code: ${employee.employee_code}) has no auth_id. Attempting robust fallback cleanup...`);
 
-        // Find users matching code (metadata) or email (direct) - Robust Logic
-        // We reuse the robust search logic from admin_maintenance.ts
-        const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        if (!listError && users) {
-            const targetCode = String(employee.employee_code).trim().toLowerCase();
-            // Assuming we don't have email in 'employee' object here (select was partial), fetch full
-            const { data: fullEmp } = await supabaseAdmin.from('employees').select('email').eq('id', id).single();
-            const targetEmail = fullEmp?.email?.trim().toLowerCase();
+        // 2. Fetch Employee to get Auth ID before deletion
+        const supabaseAdmin = getSupabaseAdmin();
+        const { data: employee, error: fetchError } = await supabaseAdmin
+            .from('employees')
+            .select('auth_id, employee_code')
+            .eq('id', id)
+            .single();
 
-            const foundOrphan = users.find(u => {
-                const metaCode = u.user_metadata?.employee_code;
-                const matchesCode = metaCode && (String(metaCode).trim().toLowerCase() === targetCode);
-                const matchesEmail = targetEmail && u.email?.trim().toLowerCase() === targetEmail;
-                return matchesCode || matchesEmail;
-            });
+        if (fetchError) {
+            throw new Error(`Employee not found: ${fetchError.message}`);
+        }
 
-            if (foundOrphan) {
-                console.log(`Found orphan Auth User via Robust Search: ${foundOrphan.id}. Deleting...`);
-                const { error: orphanError } = await supabaseAdmin.rpc('force_delete_auth_user', { target_user_id: foundOrphan.id });
-                if (orphanError) {
-                    console.error('Fallback Orphan Delete Failed:', orphanError);
-                    throw new Error(`Fallback Auth Deletion Failed: ${orphanError.message}`);
+        // 3. Unlink Auth ID FIRST (to bypass FK Restrict from employees table)
+        if (employee.auth_id) {
+            // Set auth_id to NULL in DB first to release the constraint
+            const { error: unlinkError } = await supabaseAdmin
+                .from('employees')
+                .update({ auth_id: null })
+                .eq('id', id);
+
+            if (unlinkError) {
+                console.error(`Failed to unlink Auth User ${employee.auth_id} from employee ${id}:`, unlinkError);
+                throw new Error(`DB Unlink Failed: ${unlinkError.message}`);
+            }
+
+            // Use RPC to bypass immutable audit log triggers
+            const { error: authDeleteError } = await supabaseAdmin.rpc('force_delete_auth_user', { target_user_id: employee.auth_id });
+            if (authDeleteError) {
+                console.error(`Failed to delete Auth User ${employee.auth_id}:`, authDeleteError);
+                
+                // Compensation: restore the link if Auth delete fails
+                await supabaseAdmin.from('employees').update({ auth_id: employee.auth_id }).eq('id', id);
+                
+                throw new Error(`Auth Deletion Failed: ${authDeleteError.message}`); // Stop DB delete
+            } else {
+                console.log(`Auth User ${employee.auth_id} deleted successfully.`);
+            }
+        } else {
+            // Fallback: If auth_id is missing, try robust search (Email + Code)
+            console.warn(`Employee ${id} (Code: ${employee.employee_code}) has no auth_id. Attempting robust fallback cleanup...`);
+
+            // Find users matching code (metadata) or email (direct) - Robust Logic
+            const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            if (!listError && users) {
+                const targetCode = String(employee.employee_code).trim().toLowerCase();
+                const { data: fullEmp } = await supabaseAdmin.from('employees').select('email').eq('id', id).single();
+                const targetEmail = fullEmp?.email?.trim().toLowerCase();
+
+                const foundOrphan = users.find(u => {
+                    const metaCode = u.user_metadata?.employee_code;
+                    const matchesCode = metaCode && (String(metaCode).trim().toLowerCase() === targetCode);
+                    const matchesEmail = targetEmail && u.email?.trim().toLowerCase() === targetEmail;
+                    return matchesCode || matchesEmail;
+                });
+
+                if (foundOrphan) {
+                    console.log(`Found orphan Auth User via Robust Search: ${foundOrphan.id}. Deleting...`);
+                    const { error: orphanError } = await supabaseAdmin.rpc('force_delete_auth_user', { target_user_id: foundOrphan.id });
+                    if (orphanError) {
+                        console.error('Fallback Orphan Delete Failed:', orphanError);
+                        throw new Error(`Fallback Auth Deletion Failed: ${orphanError.message}`);
+                    }
                 }
             }
         }
-    }
 
-    // 4. Delete DB Record (after Auth is gone)
-    const { count, error: deleteError } = await supabaseAdmin
-        .from('employees')
-        .delete({ count: 'exact' })
-        .eq('id', id)
-        .eq('version', version);
+        // 4. Delete DB Record (after Auth is gone)
+        console.log(`[deleteEmployeeAction] Deleting DB record for id: ${id}`);
+        const { count, error: deleteError } = await supabaseAdmin
+            .from('employees')
+            .delete({ count: 'exact' })
+            .eq('id', id)
+            .eq('version', version);
 
-    if (deleteError) {
-        throw new Error(deleteError.message);
-    }
-
-    if (count === 0) {
-        // カスケード削除等で既に削除済みか確認
-        const { data: stillThere } = await supabaseAdmin.from('employees').select('id').eq('id', id).maybeSingle();
-        if (stillThere) {
-            // レコードは存在しているがバージョンが異なり削除されなかった場合（競合）
-            return { success: false, error: 'ConcurrencyError' };
+        if (deleteError) {
+            console.error(`[deleteEmployeeAction] Delete error:`, deleteError);
+            throw new Error(`DBからの削除に失敗しました (外部キー制約等の可能性があります): ${deleteError.message}`);
         }
-    }
 
-    // 5. Audit Log Actor -> REMOVED.
-    // User requested to separate Audit/Operation logs.
-    if (currentUser) {
-        // Run async without awaiting to not block UI response
-        console.log(`[DeleteAction] Patching operation log for ${id} by ${currentUser.email || currentUser.code}`);
-        await fixOperationLogActor(supabaseAdmin, id, 'employees', currentUser, 'DELETE');
-    }
+        if (count === 0) {
+            const { data: stillThere } = await supabaseAdmin.from('employees').select('id').eq('id', id).maybeSingle();
+            if (stillThere) {
+                return { success: false, error: 'ConcurrencyError' };
+            }
+        }
 
-    return { success: true };
+        // 5. Audit Log Actor
+        if (currentUser) {
+            try {
+                console.log(`[deleteEmployeeAction] Patching operation log for ${id} by ${currentUser.email || currentUser.code}`);
+                await fixOperationLogActor(supabaseAdmin, id, 'employees', currentUser, 'DELETE');
+            } catch (opLogError) {
+                console.warn(`[deleteEmployeeAction] Operation log patching failed (non-critical):`, opLogError);
+            }
+        }
+
+        console.log(`[deleteEmployeeAction] Successfully deleted employee: ${id}`);
+        return { success: true };
+    } catch (e: any) {
+        console.error(`[deleteEmployeeAction] Unexpected Error:`, e);
+        return { success: false, error: e.message || '予期せぬサーバーエラーが発生しました' };
+    }
 }
 
 export async function deleteManyEmployeesAction(ids: string[]) {
