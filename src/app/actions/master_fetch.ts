@@ -115,8 +115,18 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
     query = applyFiltersAndSort(admin.from('employees').select('*', { count: 'exact' }));
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-    const { data, count, error } = await query.range(from, to);
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query.range(from, to);
+    
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('employees').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return {
         data: data || [],
@@ -204,8 +214,18 @@ export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, count, error } = await query.range(from, to);
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query.range(from, to);
+    
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('addresses').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return {
         data: data || [],
@@ -283,8 +303,18 @@ export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, so
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, count, error } = await query.range(from, to);
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query.range(from, to);
+    
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('areas').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return {
         data: data || [],

@@ -82,8 +82,19 @@ export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, 
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    // PGRST103 (Range Not Satisfiable) エラーが発生した場合、1ページ目にフォールバック
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('iphones').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return { data: data || [], totalCount: count || 0, highlightPage };
 }
@@ -150,8 +161,18 @@ export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, 
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('tablets').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return { data: data || [], totalCount: count || 0, highlightPage };
 }
@@ -217,8 +238,18 @@ export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, search
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('featurephones').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return { data: data || [], totalCount: count || 0, highlightPage };
 }
@@ -284,8 +315,18 @@ export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, 
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('routers').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
     return { data: data || [], totalCount: count || 0, highlightPage };
 }
