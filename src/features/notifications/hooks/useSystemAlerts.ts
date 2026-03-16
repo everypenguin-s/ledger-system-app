@@ -214,7 +214,8 @@ export const useSystemAlerts = () => {
         checkMissing(tablets, 'addressCode', 'Tablet', '/devices/tablets', '事業所コード', 'missing_address_code');
 
         // Router
-        checkMissing(routers, 'employeeCode', 'Router', '/devices/routers', '社員コード', 'missing_employee_code');
+        // ルーターは社員コードが設定されないことが多いため、チェックを除外
+        // checkMissing(routers, 'employeeCode', 'Router', '/devices/routers', '社員コード', 'missing_employee_code');
         checkMissing(routers, 'addressCode', 'Router', '/devices/routers', '事業所コード', 'missing_address_code');
 
         // Employee

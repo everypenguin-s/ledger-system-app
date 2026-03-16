@@ -18,6 +18,8 @@ export async function getHighlightPage(baseQuery: any, highlightId: string, page
     const fetchSize = 1000;
     let foundIndex = -1;
 
+    // baseQuery はすでに .select() されている可能性もあるし、されていない可能性もある。
+    // .select('id') を呼ぶことで、IDリストの取得を強制する。
     while (hasMore) {
         const idQuery = baseQuery.select('id').range(currentOffset, currentOffset + fetchSize - 1);
         const { data: batchIds, error } = await idQuery;

@@ -73,7 +73,7 @@ export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('iphones'));
+        const baseQuery = applyFiltersAndSort(admin.from('iphones').select('id'));
         highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
     }
 
@@ -139,7 +139,7 @@ export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('tablets'));
+        const baseQuery = applyFiltersAndSort(admin.from('tablets').select('id'));
         highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
     }
 
@@ -208,7 +208,7 @@ export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, search
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('featurephones'));
+        const baseQuery = applyFiltersAndSort(admin.from('featurephones').select('id'));
         highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
     }
 
@@ -275,7 +275,7 @@ export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('routers'));
+        const baseQuery = applyFiltersAndSort(admin.from('routers').select('id'));
         highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
     }
 
