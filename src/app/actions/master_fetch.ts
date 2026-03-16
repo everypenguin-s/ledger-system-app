@@ -169,6 +169,7 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
     const to = from + pageSize - 1;
     let { data, count, error } = await query.range(from, to);
     
+    let wasFallback = false;
     if (error && error.code === 'PGRST103') {
         const fallbackQuery = applyFiltersAndSort(admin.from('employees').select('*', { count: 'exact' }))
             .range(0, pageSize - 1);
@@ -176,6 +177,7 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
         if (fallback.error) throw new Error(fallback.error.message);
         data = fallback.data;
         count = fallback.count;
+        wasFallback = true;
     } else if (error) {
         throw new Error(error.message);
     }
@@ -183,7 +185,8 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
     return {
         data: data || [],
         totalCount: count || 0,
-        highlightPage
+        highlightPage,
+        wasFallback
     };
 }
 
@@ -299,6 +302,7 @@ export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm
 
     let { data, count, error } = await query.range(from, to);
     
+    let wasFallback = false;
     if (error && error.code === 'PGRST103') {
         const fallbackQuery = applyFiltersAndSort(admin.from('addresses').select('*', { count: 'exact' }))
             .range(0, pageSize - 1);
@@ -306,6 +310,7 @@ export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm
         if (fallback.error) throw new Error(fallback.error.message);
         data = fallback.data;
         count = fallback.count;
+        wasFallback = true;
     } else if (error) {
         throw new Error(error.message);
     }
@@ -313,7 +318,8 @@ export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm
     return {
         data: data || [],
         totalCount: count || 0,
-        highlightPage
+        highlightPage,
+        wasFallback
     };
 }
 
@@ -406,6 +412,7 @@ export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, so
 
     let { data, count, error } = await query.range(from, to);
     
+    let wasFallback = false;
     if (error && error.code === 'PGRST103') {
         const fallbackQuery = applyFiltersAndSort(admin.from('areas').select('*', { count: 'exact' }))
             .range(0, pageSize - 1);
@@ -413,6 +420,7 @@ export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, so
         if (fallback.error) throw new Error(fallback.error.message);
         data = fallback.data;
         count = fallback.count;
+        wasFallback = true;
     } else if (error) {
         throw new Error(error.message);
     }
@@ -420,7 +428,8 @@ export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, so
     return {
         data: data || [],
         totalCount: count || 0,
-        highlightPage
+        highlightPage,
+        wasFallback
     };
 }
 

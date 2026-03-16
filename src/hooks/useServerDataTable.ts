@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useToast } from '../features/context/ToastContext';
 
 export type SortOrder = 'asc' | 'desc';
 
@@ -8,7 +9,7 @@ export interface SortCriterion<T> {
 }
 
 interface UseServerDataTableProps<T> {
-    fetchData: (params: { page: number; pageSize: number; searchTerm: string; sortCriteria: SortCriterion<T>[]; highlightId?: string }) => Promise<{ data: any[]; totalCount: number; highlightPage?: number }>;
+    fetchData: (params: { page: number; pageSize: number; searchTerm: string; sortCriteria: SortCriterion<T>[]; highlightId?: string }) => Promise<{ data: any[]; totalCount: number; highlightPage?: number; wasFallback?: boolean }>;
     mapData: (dbItem: any) => T;
     initialPageSize?: number;
     debounceMs?: number;
@@ -22,6 +23,7 @@ export const useServerDataTable = <T extends { id: string }>({
     debounceMs = 300,
     highlightId,
 }: UseServerDataTableProps<T>) => {
+    const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -71,6 +73,12 @@ export const useServerDataTable = <T extends { id: string }>({
             const result = await fetchData(params);
             console.log('[useServerDataTable] Received result:', result);
 
+            // Handle fallback notification
+            if (result.wasFallback) {
+                showToast('データの表示範囲が変更されたため、1ページ目を表示しました', 'info');
+                setCurrentPage(1);
+            }
+
             // Set totalItems FIRST so the boundary effect doesn't reset currentPage to 1
             setTotalItems(result.totalCount);
 
@@ -92,7 +100,7 @@ export const useServerDataTable = <T extends { id: string }>({
         } finally {
             setIsLoading(false);
         }
-    }, [fetchData, mapData, currentPage, pageSize, debouncedSearchTerm, sortCriteria, highlightId, highlightHandled]);
+    }, [fetchData, mapData, currentPage, pageSize, debouncedSearchTerm, sortCriteria, highlightId, highlightHandled, showToast]);
 
     // Re-fetch when dependencies change
     useEffect(() => {
