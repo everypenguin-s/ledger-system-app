@@ -11,6 +11,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const { login, logout } = useAuth();
     const { showToast, dismissToast, dismissAll } = useToast();
     const router = useRouter();
@@ -27,6 +28,7 @@ export default function LoginPage() {
             setCode('');
             setPassword('');
             setError('');
+            setIsSubmitting(false);
         };
         cleanup();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -34,30 +36,41 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         const toastId = showToast('ログイン中...', 'loading', undefined, 0); // Persistent toast
 
         try {
-            const user = await login(code, password);
+            const { user, errorType } = await login(code, password);
 
             if (user) {
                 dismissToast(toastId);
                 showToast('ログイン完了', 'success');
-                // router.refresh() のあとに router.push() を実行しないと、
-                // サーバー側にクッキーが届く前に遷移してしまい Unauthenticated になる。
-                // startTransition を使って refresh の完結を待ってから push する。
                 const destination = user.role === 'admin' ? '/' : '/dashboard';
                 router.refresh();
-                // 少し待機してから push することで、サーバーがクッキーを認識する時間を確保する
                 await new Promise(resolve => setTimeout(resolve, 300));
                 router.push(destination);
+                // No setIsSubmitting(false) here because we are redirecting away
             } else {
                 dismissToast(toastId);
-                const errorMsg = '社員番号またはパスワードが間違っています';
+                setIsSubmitting(false);
+
+                let errorMsg = '社員番号またはパスワードが間違っています';
+                if (errorType === 'AUTH_RATE_LIMIT') {
+                    errorMsg = '短時間に試行回数が多すぎます。しばらく待ってから再度お試しください。';
+                } else if (errorType === 'PROFILE_ERROR') {
+                    errorMsg = 'プロフィール情報の取得に失敗しました';
+                } else if (errorType === 'UNEXPECTED') {
+                    errorMsg = 'ログイン処理中に予期せぬエラーが発生しました';
+                }
+
                 setError(errorMsg);
                 showToast(errorMsg, 'error');
             }
-        } catch (e) {
+        } catch (err: any) {
             dismissToast(toastId);
+            setIsSubmitting(false);
             const errorMsg = 'ログイン処理中にエラーが発生しました';
             setError(errorMsg);
             showToast(errorMsg, 'error');
@@ -145,9 +158,10 @@ export default function LoginPage() {
 
                 <button
                     type="submit"
-                    className="w-full bg-ink text-white py-4 px-6 border-2 border-transparent hover:bg-accent-electric hover:text-ink hover:border-ink hover:shadow-offset transition-all duration-300 font-bold tracking-widest font-display text-lg uppercase"
+                    disabled={isSubmitting}
+                    className="w-full bg-ink text-white py-4 px-6 border-2 border-transparent hover:bg-accent-electric hover:text-ink hover:border-ink hover:shadow-offset transition-all duration-300 font-bold tracking-widest font-display text-lg uppercase disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-ink disabled:hover:text-white disabled:hover:border-transparent disabled:hover:shadow-none"
                 >
-                    Access System
+                    {isSubmitting ? 'Processing...' : 'Access System'}
                 </button>
             </form>
 

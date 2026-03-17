@@ -118,112 +118,149 @@ export async function updateEmployeeBySetupAdmin(item: any) {
 }
 
 export async function deleteEmployeeBySetupAdmin(id: string) {
-    const cookieStore = await cookies();
-    const isSetup = cookieStore.get(COOKIE_NAME);
-    if (isSetup?.value !== 'true') throw new Error('Unauthorized');
+    try {
+        const cookieStore = await cookies();
+        const isSetup = cookieStore.get(COOKIE_NAME);
+        if (isSetup?.value !== 'true') throw new Error('Unauthorized');
 
-    const supabase = getSupabaseAdmin();
+        const supabase = getSupabaseAdmin();
 
-    // 1. Get Auth ID
-    const { data: employee } = await supabase.from('employees').select('auth_id').eq('id', id).single();
-
-    // 2. Unlink Auth ID (to bypass FK Restrict from employees table)
-    if (employee?.auth_id) {
-        // Set auth_id to NULL
-        const { error: unlinkError } = await supabase
-            .from('employees')
-            .update({ auth_id: null })
-            .eq('id', id);
-
-        if (unlinkError) {
-            console.error('Setup Unlink Error:', unlinkError);
-            throw new Error(`DB更新エラー(Unlink): ${unlinkError.message}`);
+        // 1. Get Auth ID
+        console.log(`[deleteEmployeeBySetupAdmin] Fetching employee with id: ${id}`);
+        const { data: employee, error: fetchError } = await supabase.from('employees').select('auth_id, employee_code').eq('id', id).single();
+        
+        if (fetchError) {
+            console.error(`[deleteEmployeeBySetupAdmin] Fetch error:`, fetchError);
+            return { success: false, error: `社員情報の取得に失敗しました (ID: ${id}): ${fetchError.message}` };
         }
 
-        // 3. Delete Auth User using RPC (to bypass FKs from other tables like logs)
-        const { error: authError } = await supabase.rpc('force_delete_auth_user', { target_user_id: employee.auth_id });
-        if (authError) {
-            console.error('Setup Auth ID RPC Delete Error:', authError);
-            
-            // Compensation: Restore the link if Auth delete fails
-            await supabase
+        // 2. Unlink Auth ID (to bypass FK Restrict from employees table)
+        if (employee?.auth_id) {
+            console.log(`[deleteEmployeeBySetupAdmin] Unlinking auth_id: ${employee.auth_id}`);
+            // Set auth_id to NULL
+            const { error: unlinkError } = await supabase
                 .from('employees')
-                .update({ auth_id: employee.auth_id })
+                .update({ auth_id: null })
                 .eq('id', id);
 
-            throw new Error(`Authユーザーの削除(RPC)に失敗したため、処理を中断して元に戻しました: ${authError.message}`);
-        }
-    }
+            if (unlinkError) {
+                console.error('[deleteEmployeeBySetupAdmin] Unlink Error:', unlinkError);
+                return { success: false, error: `DB更新エラー(Unlink - ID: ${id}): ${unlinkError.message}` };
+            }
 
-    // 4. Delete DB Record
-    const { error } = await supabase.from('employees').delete().eq('id', id);
-    if (error) throw error;
+            // 3. Delete Auth User using RPC (to bypass FKs from other tables like logs)
+            console.log(`[deleteEmployeeBySetupAdmin] Deleting Auth User via RPC: ${employee.auth_id}`);
+            const { error: authError } = await supabase.rpc('force_delete_auth_user', { target_user_id: employee.auth_id });
+            if (authError) {
+                console.error('[deleteEmployeeBySetupAdmin] Auth RPC Delete Error:', authError);
+                
+                // Compensation: Restore the link if Auth delete fails
+                await supabase
+                    .from('employees')
+                    .update({ auth_id: employee.auth_id })
+                    .eq('id', id);
+
+                return { success: false, error: `Authユーザーの削除(RPC)に失敗しました: ${authError.message}` };
+            }
+        }
+
+        // 4. Delete DB Record
+        console.log(`[deleteEmployeeBySetupAdmin] Deleting DB record for id: ${id}`);
+        const { error: deleteError } = await supabase.from('employees').delete().eq('id', id);
+        if (deleteError) {
+            console.error(`[deleteEmployeeBySetupAdmin] Delete error:`, deleteError);
+            return { success: false, error: `DBからの削除に失敗しました (外部キー制約等の可能性があります): ${deleteError.message}` };
+        }
+        console.log(`[deleteEmployeeBySetupAdmin] Successfully deleted employee: ${id}`);
+        return { success: true };
+    } catch (e: any) {
+        console.error(`[deleteEmployeeBySetupAdmin] Critical Error:`, e);
+        return { success: false, error: e.message || '予期せぬサーバーエラーが発生しました' };
+    }
 }
 
 export async function deleteManyEmployeesBySetupAdmin(ids: string[]) {
-    const cookieStore = await cookies();
-    const isSetup = cookieStore.get(COOKIE_NAME);
-    if (isSetup?.value !== 'true') throw new Error('Unauthorized');
+    try {
+        const cookieStore = await cookies();
+        const isSetup = cookieStore.get(COOKIE_NAME);
+        if (isSetup?.value !== 'true') throw new Error('Unauthorized');
 
-    const supabase = getSupabaseAdmin();
+        const supabase = getSupabaseAdmin();
 
-    // 1. Get Auth IDs to process
-    const { data: employees } = await supabase.from('employees').select('id, auth_id').in('id', ids);
+        // 1. Get Auth IDs to process
+        console.log(`[deleteManyEmployeesBySetupAdmin] Processing ${ids.length} employees`);
+        const { data: employees, error: fetchError } = await supabase.from('employees').select('id, auth_id').in('id', ids);
 
-    const validIdsToDelete: string[] = [];
-    const idsToUnlink: string[] = [];
-    const empMap = new Map<string, string>(); // id -> auth_id
-
-    if (employees) {
-        employees.forEach(e => {
-            if (e.auth_id) {
-                idsToUnlink.push(e.id);
-                empMap.set(e.id, e.auth_id);
-            } else {
-                validIdsToDelete.push(e.id);
-            }
-        });
-    }
-
-    // 2. Unlink Auth IDs (Bulk)
-    if (idsToUnlink.length > 0) {
-        const { error: unlinkError } = await supabase
-            .from('employees')
-            .update({ auth_id: null })
-            .in('id', idsToUnlink);
-        
-        if (unlinkError) {
-             throw new Error(`一括削除の準備(Unlink)に失敗しました: ${unlinkError.message}`);
+        if (fetchError) {
+            console.error('[deleteManyEmployeesBySetupAdmin] Fetch error:', fetchError);
+            return { success: false, error: `一括削除対象の取得に失敗しました: ${fetchError.message}` };
         }
-    }
 
-    // 3. Delete Auth Users (Loop with RPC)
-    if (idsToUnlink.length > 0) {
-        await Promise.all(idsToUnlink.map(async (empId) => {
-            const authId = empMap.get(empId);
-            if (authId) {
-                const { error } = await supabase.rpc('force_delete_auth_user', { target_user_id: authId });
-                if (error) {
-                    console.error(`Setup Bulk Auth RPC Delete Error for ${empId}:`, error);
-                    // Failure: We must re-link this user effectively
-                    await supabase.from('employees').update({ auth_id: authId }).eq('id', empId);
-                    // Do NOT add to validIdsToDelete
+        const validIdsToDelete: string[] = [];
+        const idsToUnlink: string[] = [];
+        const empMap = new Map<string, string>(); // id -> auth_id
+
+        if (employees) {
+            employees.forEach(e => {
+                if (e.auth_id) {
+                    idsToUnlink.push(e.id);
+                    empMap.set(e.id, e.auth_id);
                 } else {
-                    // Success
-                    validIdsToDelete.push(empId);
+                    validIdsToDelete.push(e.id);
                 }
+            });
+        }
+
+        // 2. Unlink Auth IDs (Bulk)
+        if (idsToUnlink.length > 0) {
+            console.log(`[deleteManyEmployeesBySetupAdmin] Unlinking ${idsToUnlink.length} auth_ids`);
+            const { error: unlinkError } = await supabase
+                .from('employees')
+                .update({ auth_id: null })
+                .in('id', idsToUnlink);
+            
+            if (unlinkError) {
+                console.error('[deleteManyEmployeesBySetupAdmin] Unlink bulk error:', unlinkError);
+                return { success: false, error: `一括削除の準備(Unlink)に失敗しました: ${unlinkError.message}` };
             }
-        }));
-    }
+        }
 
-    if (validIdsToDelete.length === 0) {
-         if (employees && employees.length > 0) {
-             throw new Error('Authユーザーの削除にすべて失敗したため、DB削除を中断しました。');
-         }
-         return; 
-    }
+        // 3. Delete Auth Users (Loop with RPC)
+        if (idsToUnlink.length > 0) {
+            console.log(`[deleteManyEmployeesBySetupAdmin] Deleting auth users for ${idsToUnlink.length} employees`);
+            await Promise.all(idsToUnlink.map(async (empId) => {
+                const authId = empMap.get(empId);
+                if (authId) {
+                    const { error } = await supabase.rpc('force_delete_auth_user', { target_user_id: authId });
+                    if (error) {
+                        console.error(`[deleteManyEmployeesBySetupAdmin] Auth RPC Delete Error for ${empId}:`, error);
+                        // Failure: We must re-link this user effectively
+                        await supabase.from('employees').update({ auth_id: authId }).eq('id', empId);
+                    } else {
+                        validIdsToDelete.push(empId);
+                    }
+                }
+            }));
+        }
 
-    // 4. Delete ONLY successfully processed DB Records
-    const { error } = await supabase.from('employees').delete().in('id', validIdsToDelete);
-    if (error) throw error;
+        if (validIdsToDelete.length === 0) {
+            if (employees && employees.length > 0) {
+                return { success: false, error: 'Authユーザーの削除にすべて失敗したため、DB削除を中断しました。' };
+            }
+            return { success: true }; 
+        }
+
+        // 4. Delete ONLY successfully processed DB Records
+        console.log(`[deleteManyEmployeesBySetupAdmin] Deleting ${validIdsToDelete.length} DB records`);
+        const { error: deleteError } = await supabase.from('employees').delete().in('id', validIdsToDelete);
+        if (deleteError) {
+            console.error('[deleteManyEmployeesBySetupAdmin] Delete bulk error:', deleteError);
+            return { success: false, error: `DBからの削除に失敗しました: ${deleteError.message}` };
+        }
+        
+        return { success: true };
+    } catch (e: any) {
+        console.error(`[deleteManyEmployeesBySetupAdmin] Critical Error:`, e);
+        return { success: false, error: e.message || '一括削除中に予期せぬサーバーエラーが発生しました' };
+    }
 }

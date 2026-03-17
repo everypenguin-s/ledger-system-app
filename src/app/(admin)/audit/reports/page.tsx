@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { AuditReport } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table-components';
@@ -10,6 +10,7 @@ import { Eye, Loader2 } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "../../../../components/ui/dialog";
@@ -20,7 +21,7 @@ export default function AuditReportsPage() {
     const [reports, setReports] = useState<AuditReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState<AuditReport | null>(null);
-    const supabase = createClientComponentClient();
+    const supabase = getSupabaseBrowserClient();
 
     useEffect(() => {
         fetchReports();
@@ -127,6 +128,9 @@ export default function AuditReportsPage() {
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Report Detail: {selectedReport && new Date(selectedReport.period_start).toLocaleDateString()}</DialogTitle>
+                        <DialogDescription>
+                            監査レポートの詳細情報を表示しています。
+                        </DialogDescription>
                     </DialogHeader>
                     {selectedReport && (
                         <div className="space-y-6">

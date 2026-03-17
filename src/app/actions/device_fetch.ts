@@ -73,8 +73,36 @@ export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('iphones'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            managementNumber: 'management_number',
+            phoneNumber: 'phone_number',
+            modelName: 'model_name',
+            contractYears: 'contract_years',
+            carrier: 'carrier',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code',
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'management_number', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'iphones', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`management_number.ilike.%${searchTerm}%,phone_number.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     let query = applyFiltersAndSort(admin.from('iphones').select('*', { count: 'exact' }));
@@ -82,10 +110,23 @@ export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, 
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    let wasFallback = false;
+    // PGRST103 (Range Not Satisfiable) エラーが発生した場合、1ページ目にフォールバック
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('iphones').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+        wasFallback = true;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
-    return { data: data || [], totalCount: count || 0, highlightPage };
+    return { data: data || [], totalCount: count || 0, highlightPage, wasFallback };
 }
 
 export async function fetchIPhonesAllAction(searchTerm?: string) {
@@ -139,8 +180,33 @@ export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('tablets'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            terminalCode: 'terminal_code',
+            contractYears: 'contract_years',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code',
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'terminal_code', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'tablets', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`terminal_code.ilike.%${searchTerm}%,maker.ilike.%${searchTerm}%,model_number.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     console.log(`[Server] tablets pagination requested. Page=${page}, pageSize=${pageSize}, highlightId=${highlightId}, returning highlightPage=${highlightPage}`);
@@ -150,10 +216,22 @@ export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, 
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    let wasFallback = false;
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('tablets').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+        wasFallback = true;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
-    return { data: data || [], totalCount: count || 0, highlightPage };
+    return { data: data || [], totalCount: count || 0, highlightPage, wasFallback };
 }
 
 export async function fetchTabletsAllAction(searchTerm?: string) {
@@ -208,8 +286,36 @@ export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, search
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('featurephones'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            managementNumber: 'management_number',
+            phoneNumber: 'phone_number',
+            modelName: 'model_name',
+            contractYears: 'contract_years',
+            carrier: 'carrier',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code', 
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'management_number', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'featurephones', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`management_number.ilike.%${searchTerm}%,phone_number.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     let query = applyFiltersAndSort(admin.from('featurephones').select('*', { count: 'exact' }));
@@ -217,10 +323,22 @@ export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, search
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    let wasFallback = false;
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('featurephones').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+        wasFallback = true;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
-    return { data: data || [], totalCount: count || 0, highlightPage };
+    return { data: data || [], totalCount: count || 0, highlightPage, wasFallback };
 }
 
 export async function fetchFeaturePhonesAllAction(searchTerm?: string) {
@@ -275,8 +393,36 @@ export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, 
 
     let highlightPage: number | undefined;
     if (highlightId) {
-        const baseQuery = applyFiltersAndSort(admin.from('routers'));
-        highlightPage = await getHighlightPage(baseQuery, highlightId, pageSize);
+        const criteria: { column: string; ascending: boolean }[] = [];
+        const km: Record<string, string> = {
+            no: 'no',
+            terminalCode: 'terminal_code',
+            contractYears: 'contract_years',
+            status: 'status',
+            employeeCode: 'employee_code',
+            addressCode: 'address_code',
+            simNumber: 'sim_number',
+            ipAddress: 'ip_address'
+        };
+        if (sortCriteria && sortCriteria.length > 0) {
+            sortCriteria.forEach(s => criteria.push({ column: km[s.key] || s.key, ascending: s.order === 'asc' }));
+        } else {
+            criteria.push({ column: 'no', ascending: true });
+        }
+
+        highlightPage = await getHighlightPage({
+            admin, 
+            tableName: 'routers', 
+            highlightId, 
+            pageSize, 
+            applyFilters: (q) => {
+                if (searchTerm) {
+                    return q.or(`no.ilike.%${searchTerm}%,terminal_code.ilike.%${searchTerm}%,sim_number.ilike.%${searchTerm}%,ip_address.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`);
+                }
+                return q;
+            },
+            sortCriteria: criteria
+        });
     }
 
     let query = applyFiltersAndSort(admin.from('routers').select('*', { count: 'exact' }));
@@ -284,10 +430,22 @@ export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, 
     const end = start + pageSize - 1;
     query = query.range(start, end);
 
-    const { data, count, error } = await query;
-    if (error) throw new Error(error.message);
+    let { data, count, error } = await query;
+    
+    let wasFallback = false;
+    if (error && error.code === 'PGRST103') {
+        const fallbackQuery = applyFiltersAndSort(admin.from('routers').select('*', { count: 'exact' }))
+            .range(0, pageSize - 1);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw new Error(fallback.error.message);
+        data = fallback.data;
+        count = fallback.count;
+        wasFallback = true;
+    } else if (error) {
+        throw new Error(error.message);
+    }
 
-    return { data: data || [], totalCount: count || 0, highlightPage };
+    return { data: data || [], totalCount: count || 0, highlightPage, wasFallback };
 }
 
 export async function fetchRoutersAllAction(searchTerm?: string) {

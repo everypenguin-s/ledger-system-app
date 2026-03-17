@@ -328,7 +328,12 @@ function EmployeeListContent() {
         await deleteEmployee(item.id, item.version, false, true);
         refetch();
       } catch (error: any) {
-        // console.error(error);
+        console.error('Delete failed:', error);
+        // Error is already handled inside context for known types, 
+        // but fatal/unexpected errors might reach here.
+        if (error.message && !error.message.includes('ConcurrencyError')) {
+           showToast('削除に失敗しました', 'error', error.message);
+        }
       }
     }
   };
@@ -366,8 +371,11 @@ function EmployeeListContent() {
         await deleteManyEmployees(idsToDelete);
         setSelectedIds(new Set());
         refetch();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Bulk delete failed", error);
+        if (error.message) {
+           showToast('一括削除に失敗しました', 'error', error.message);
+        }
       }
     }
   };

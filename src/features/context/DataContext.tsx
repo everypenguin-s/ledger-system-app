@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { usePathname } from 'next/navigation';
 import type { Tablet, IPhone, FeaturePhone, Router, Employee, Area, Address, Log, DeviceStatus } from '../../lib/types';
 import { useAuth } from './AuthContext';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { getWeekRange, calculateAge, calculateServicePeriod } from '../../lib/utils/dateHelpers';
 import { logger, LogActionType, TargetType } from '../../lib/logger';
 import { useToast } from './ToastContext';
@@ -23,7 +23,7 @@ import {
     createAreaAction, updateAreaAction, deleteAreaAction, deleteManyAreasAction,
     createAddressAction, updateAddressAction, deleteAddressAction, deleteManyAddressesAction
 } from '@/app/actions/master';
-import { deleteManyEmployeesBySetupAdmin } from '@/app/actions/employee_setup';
+import { deleteManyEmployeesBySetupAdmin, deleteEmployeeBySetupAdmin } from '@/app/actions/employee_setup';
 import { fetchAuditLogsAction, fetchLogMinDateAction } from '@/app/actions/audit';
 import { getSyncMetadataAction, type SyncMetadata } from '@/app/actions/sync';
 
@@ -376,7 +376,7 @@ const TARGET_MAP: Record<string, TargetType> = {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const supabase = createClientComponentClient();
+    const supabase = getSupabaseBrowserClient();
     const [tablets, setTablets] = useState<Tablet[]>([]);
     const [iPhones, setIPhones] = useState<IPhone[]>([]);
     const [featurePhones, setFeaturePhones] = useState<FeaturePhone[]>([]);
@@ -401,8 +401,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const pathname = usePathname();
     const lastSyncMetadata = useRef<Record<string, SyncMetadata>>({});
     const lastSyncTime = useRef<number>(0);
-    const SYNC_COOLDOWN = 3000; // 3 seconds
+    const SYNC_COOLDOWN = 60000; // 60 seconds (optimized from 3s)
     const isFirstLoad = useRef(true);
+    const isFetchingRef = useRef(false);
 
 
     const fetchIPhones = useCallback(async (force: boolean = false) => {
@@ -498,13 +499,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [fetchStatus.areas]);
 
     const syncDataIfNeeded = useCallback(async () => {
-        if (!user) return;
+        if (!user || isFetchingRef.current) return;
+        
+        // Skip device sync for setup account
+        if (user.id === 'INITIAL_SETUP_ACCOUNT') return;
 
         const now = Date.now();
-        if (now - lastSyncTime.current < SYNC_COOLDOWN) {
-            console.log('[Sync] Skipping sync (cooldown active)');
-            return;
-        }
+        if (now - lastSyncTime.current < SYNC_COOLDOWN) return;
         lastSyncTime.current = now;
 
         try {
@@ -545,32 +546,43 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [pathname, syncDataIfNeeded]);
 
     const fetchData = useCallback(async () => {
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
+
         try {
+            const isSetup = user?.id === 'INITIAL_SETUP_ACCOUNT';
+
             // Fetch core master data and sync metadata concurrently
-            const [meta] = await Promise.all([
+            const tasks: Promise<any>[] = [
                 getSyncMetadataAction(),
                 fetchEmployees(),
                 fetchAddresses(),
                 fetchAreas(),
-            ]);
+            ];
+
+            const [meta] = await Promise.all(tasks);
 
             // Initialize sync metadata baseline
             if (meta) {
-                meta.forEach(rem => {
+                meta.forEach((rem: any) => {
                     lastSyncMetadata.current[rem.table] = rem;
                 });
             }
 
-            // Default fetch: Current week's logs
-            const { start, end } = getWeekRange(new Date());
-            const logData = await fetchAuditLogsAction(start.toISOString(), end.toISOString());
-            if (logData) setLogs(logData.map(logService.mapLogFromDb));
+            // Skip heavy log fetch for setup account
+            if (!isSetup) {
+                const { start, end } = getWeekRange(new Date());
+                const logData = await fetchAuditLogsAction(start.toISOString(), end.toISOString());
+                if (logData) setLogs(logData.map(logService.mapLogFromDb));
+            }
 
         } catch (error) {
             console.error('Failed to fetch data:', error);
             showToast('データ読み込みに失敗しました', 'error');
+        } finally {
+            isFetchingRef.current = false;
         }
-    }, [supabase, showToast, fetchEmployees, fetchAddresses, fetchAreas]);
+    }, [user, showToast, fetchEmployees, fetchAddresses, fetchAreas]);
 
     useEffect(() => {
         if (user) {
@@ -942,6 +954,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
     const deleteEmployee = async (id: string, version: number, skipLog: boolean = false, skipToast: boolean = false, skipDialog: boolean = false) => {
+        if (user?.id === 'INITIAL_SETUP_ACCOUNT') {
+            try {
+                const result = await deleteEmployeeBySetupAdmin(id);
+                if (result.success) {
+                    setEmployees(prev => prev.filter(p => p.id !== id));
+                    if (!skipToast) showToast('削除しました (Setup)', 'success');
+                    return { success: true };
+                } else {
+                    if (!skipToast) showToast('削除に失敗しました (Setup)', 'error', result.error);
+                    throw new Error(result.error);
+                }
+            } catch (error: any) {
+                if (!skipToast && !error.message.includes('削除に失敗しました')) {
+                    showToast('削除中に致命的なエラーが発生しました', 'error', error.message);
+                }
+                throw error;
+            }
+        }
+
         const result = await deleteEmployeeAction(id, version);
         if (!result.success) {
             const item = employees.find(e => e.id === id);
@@ -1060,11 +1091,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const deleteManyEmployees = async (ids: string[]) => {
         if (user?.id === 'INITIAL_SETUP_ACCOUNT') {
             try {
-                await deleteManyEmployeesBySetupAdmin(ids);
-                setEmployees(prev => prev.filter(p => !ids.includes(p.id)));
-                showToast(`${ids.length}件、削除しました (Setup)`, 'success');
+                const result = await deleteManyEmployeesBySetupAdmin(ids);
+                if (result.success) {
+                    setEmployees(prev => prev.filter(p => !ids.includes(p.id)));
+                    showToast(`${ids.length}件、削除しました (Setup)`, 'success');
+                } else {
+                    showToast('一括削除に失敗しました (Setup)', 'error', result.error);
+                }
             } catch (error: any) {
-                showToast('削除に失敗しました', 'error', error.message);
+                showToast('一括削除中に致命的なエラーが発生しました', 'error', error.message);
             }
             return;
         }

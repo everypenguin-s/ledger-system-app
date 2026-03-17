@@ -1,18 +1,22 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Employee } from '../../lib/types';
-// import { supabase } from '../../lib/supabaseClient'; // REMOVE: Don't use static client for auth
 import { logger } from '../../lib/logger';
 import { loginInitialSetup, getSetupUserServer, logoutSetupAccount } from '../../app/actions/auth_setup';
 import { getLoginEmailAction, handleLoginFailureAction, handleLoginSuccessAction } from '@/app/actions/auth';
 
+interface LoginResult {
+    user: Employee | null;
+    errorType?: 'AUTH_RATE_LIMIT' | 'INVALID_CREDENTIALS' | 'PROFILE_ERROR' | 'UNEXPECTED';
+}
+
 interface AuthContextType {
     user: Employee | null;
     isLoading: boolean;
-    login: (employeeCode: string, password: string) => Promise<Employee | null>;
+    login: (employeeCode: string, password: string) => Promise<LoginResult>;
     logout: (shouldRedirect?: boolean) => Promise<void>;
     refreshUser: () => Promise<void>;
 }
@@ -45,22 +49,9 @@ const mapEmployeeFromDb = (d: any): Employee => ({
     updatedAt: s(d.updated_at),
 });
 
-// Singleton pattern for Supabase client to prevent "Multiple GoTrueClient instances" in dev
-const getSupabaseClient = () => {
-    if (typeof window === 'undefined') return createClientComponentClient();
-
-    if (process.env.NODE_ENV === 'development') {
-        if (!(global as any)._supabaseClient) {
-            (global as any)._supabaseClient = createClientComponentClient();
-        }
-        return (global as any)._supabaseClient;
-    }
-    return createClientComponentClient();
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // Use singleton or create new
-    const [supabase] = useState(() => getSupabaseClient());
+    // Use shared singleton
+    const [supabase] = useState(() => getSupabaseBrowserClient());
 
     const [user, setUser] = useState<Employee | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -167,14 +158,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         name: '初期セットアップアカウント',
                         role: 'admin' as const,
                     } as Employee;
+                    
+                    // Trigger router logic before setting state to ensure fresh cookie context
+                    router.refresh();
+                    
                     setUser(setupUser);
                     // セットアップアカウント用のタブセッションフラグを設定する
-                    // このフラグはタブ/ブラウザを閉じると自動的に消えるため、
-                    // 再度開いたときにログアウト扱いになる
                     if (typeof window !== 'undefined') sessionStorage.setItem('ledger_setup_session_active', 'true');
-                    return setupUser;
+                    return { user: setupUser };
                 }
-                return null;
+                return { user: null, errorType: 'INVALID_CREDENTIALS' as const };
             }
 
             // 1. Resolve Auth Email from Employee Code
@@ -190,6 +183,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (authError) {
                 console.warn('Auth Login Failed:', authError.message);
+
+                // レートリミット (429) のハンドリング
+                if ((authError as any).status === 429 || authError.message.includes('rate limit')) {
+                    return { user: null, errorType: 'AUTH_RATE_LIMIT' as const };
+                }
 
                 // 失敗回数の更新と取得
                 const failureStatus = await handleLoginFailureAction(employeeCode);
@@ -227,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         }
                     });
                 }
-                return null;
+                return { user: null, errorType: 'INVALID_CREDENTIALS' as const };
             }
 
             if (!authData.session) {
@@ -239,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     actor: { employeeCode },
                     result: 'failure'
                 });
-                return null;
+                return { user: null, errorType: 'UNEXPECTED' as const };
             }
 
             // Immediately refresh the router to allow server components/middleware to see the new cookie
@@ -268,7 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     actor: { authId: authData.session.user.id, employeeCode },
                     result: 'failure'
                 });
-                return null;
+                return { user: null, errorType: 'PROFILE_ERROR' as const };
             }
 
             const { employee: employeeData } = await profileResponse.json();
@@ -287,7 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             // Mark session as active for this tab
             if (typeof window !== 'undefined') sessionStorage.setItem('ledger_session_active', 'true');
-            return employee;
+            return { user: employee };
 
         } catch (error: any) {
             console.error('Login unexpected error:', error);
@@ -299,7 +297,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 result: 'failure',
                 metadata: { error: error }
             });
-            return null;
+            return { user: null, errorType: 'UNEXPECTED' as const };
         }
     }, [router, supabase]);
 
