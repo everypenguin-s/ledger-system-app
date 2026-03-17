@@ -10,6 +10,14 @@ import { DataProvider } from '@/features/context/DataContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
+export const metadata = {
+  title: 'Ledger System',
+  description: 'Ledger Management System',
+  icons: {
+    icon: '/favicon.ico',
+  },
+};
+
 export default function RootLayout({
     children,
 }: {
