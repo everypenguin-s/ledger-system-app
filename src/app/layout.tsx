@@ -14,7 +14,7 @@ export const metadata = {
   title: 'Ledger System',
   description: 'Ledger Management System',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/favicon.ico?v=2',
   },
 };
 
