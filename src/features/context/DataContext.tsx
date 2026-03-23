@@ -77,6 +77,7 @@ interface DataContextType {
     logs: Log[];
     handleCRUDError: (table: string, error: any, skipToast?: boolean, skipDialog?: boolean, operationName?: string, itemIdentifier?: string) => Promise<void>;
     setIsSyncing: React.Dispatch<React.SetStateAction<boolean>>;
+    isInitialized: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -386,6 +387,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [logs, setLogs] = useState<Log[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
     const [fetchStatus, setFetchStatus] = useState<Record<string, 'idle' | 'loading' | 'success' | 'error'>>({
         iphones: 'idle',
         tablets: 'idle',
@@ -569,12 +571,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
             }
 
-            // Skip heavy log fetch for setup account
             if (!isSetup) {
                 const { start, end } = getWeekRange(new Date());
                 const logData = await fetchAuditLogsAction(start.toISOString(), end.toISOString());
                 if (logData) setLogs(logData.map(logService.mapLogFromDb));
             }
+
+            setIsInitialized(true);
 
         } catch (error) {
             console.error('Failed to fetch data:', error);
@@ -1170,6 +1173,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fetchAreas,
             handleCRUDError,
             setIsSyncing,
+            isInitialized,
         }}>
             {children}
             <ConfirmDialog />

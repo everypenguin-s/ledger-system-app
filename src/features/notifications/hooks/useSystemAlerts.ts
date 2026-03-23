@@ -37,9 +37,10 @@ export interface SystemAlert {
 }
 
 export const useSystemAlerts = () => {
-    const { tablets, iPhones, featurePhones, routers, employees, areas, addresses } = useData();
+    const { tablets, iPhones, featurePhones, routers, employees, areas, addresses, isInitialized } = useData();
 
     const alerts = useMemo(() => {
+        if (!isInitialized) return [];
         const result: SystemAlert[] = [];
 
         // Pre-compute Sets for O(1) lookups
@@ -260,7 +261,7 @@ export const useSystemAlerts = () => {
         // Note: Tablet and Router do not have lendDate in the current types, so skipping them.
 
         return result;
-    }, [tablets, iPhones, featurePhones, routers, employees, areas, addresses]);
+    }, [tablets, iPhones, featurePhones, routers, employees, areas, addresses, isInitialized]);
 
     return alerts;
 };
