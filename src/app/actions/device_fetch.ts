@@ -13,15 +13,40 @@ const getSupabaseAdmin = () => {
 };
 
 const checkAuth = async () => {
-    // 1. Check for Setup User first
+    // 1. 初期セットアップアカウント（999999）のクッキーを先に確認する
     const setupUser = await getSetupUserServer();
     if (setupUser) return setupUser;
 
-    // 2. Check for Supabase Auth User
+    // 2. 通常の Supabase Auth セッションを確認する
     const cookieStore = await cookies();
-    const supabase = createServerActionClient({ cookies: () => cookieStore as any });
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Unauthenticated');
+    
+    // Next.js 15でのServer Actions内でのcookie.set例外を回避するカスタムラッパー
+    const customCookies = {
+        get: (name: string) => cookieStore.get(name),
+        set: (name: string, value: string, options: any) => {
+            try {
+                cookieStore.set(name, value, options);
+            } catch (e) {
+                console.warn('[checkAuth] Ignored cookie.set error:', e instanceof Error ? e.message : e);
+            }
+        },
+        remove: (name: string, options: any) => {
+            try {
+                cookieStore.set(name, '', { ...options, maxAge: 0 });
+            } catch (e) {
+                console.warn('[checkAuth] Ignored cookie.remove error:', e instanceof Error ? e.message : e);
+            }
+        }
+    };
+
+    const supabase = createServerActionClient({ cookies: () => customCookies as any });
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+        console.error('[checkAuth] Supabase auth error:', error?.message);
+        throw new Error(`Unauthenticated: ${error?.message || 'No user found'}`);
+    }
+    
     return user;
 };
 
