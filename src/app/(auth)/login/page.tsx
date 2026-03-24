@@ -12,25 +12,25 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { login, logout } = useAuth();
+    const { login } = useAuth();
     const { showToast, dismissToast, dismissAll } = useToast();
     const router = useRouter();
     const isMountedRef = React.useRef(false);
 
-    // Reset state on mount (handle back-button cache) - STRICTLY ONCE
+    // Reset local state on mount (handle back-button cache) - STRICTLY ONCE
+    // NOTE: supabase.auth.signOut() はここでは呼ばない。
+    //       AuthContext の initSession がタブセッションフラグを見てサインアウトを担う。
+    //       ここで logout() を呼ぶと signInWithPassword の直前に signOut 通信が走り、
+    //       Supabase のレートリミット(429)が発動する原因となるため除去。
     React.useEffect(() => {
         if (isMountedRef.current) return;
         isMountedRef.current = true;
 
-        const cleanup = async () => {
-            if (dismissAll) dismissAll(); // Clear any stale toasts (e.g. previous success)
-            await logout(false); // Force logout without redirecting (we are already here)
-            setCode('');
-            setPassword('');
-            setError('');
-            setIsSubmitting(false);
-        };
-        cleanup();
+        if (dismissAll) dismissAll(); // Clear any stale toasts (e.g. previous success)
+        setCode('');
+        setPassword('');
+        setError('');
+        setIsSubmitting(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -51,6 +51,8 @@ export default function LoginPage() {
                 router.refresh();
                 await new Promise(resolve => setTimeout(resolve, 300));
                 router.push(destination);
+                // バッジ再取得通知（ナビゲーション後）
+                setTimeout(() => window.dispatchEvent(new CustomEvent('notification-refresh')), 500);
                 // No setIsSubmitting(false) here because we are redirecting away
             } else {
                 dismissToast(toastId);
@@ -113,9 +115,10 @@ export default function LoginPage() {
                             autoComplete="off"
                             data-lpignore="true"
                             data-form-type="other"
-                            inputMode="email"
+                            inputMode="text"
                             pattern="[\x20-\x7e]*"
                             required
+                            suppressHydrationWarning
                         />
                     </div>
                 </div>
@@ -135,9 +138,9 @@ export default function LoginPage() {
                             autoComplete="new-password"
                             data-lpignore="true"
                             data-form-type="other"
-                            inputMode="email"
                             pattern="[\x20-\x7e]*"
                             required
+                            suppressHydrationWarning
                         />
                         <button
                             type="button"

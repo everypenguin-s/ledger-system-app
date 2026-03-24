@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Employee } from '../../lib/types';
@@ -88,14 +89,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     React.useEffect(() => {
         const initSession = async () => {
             try {
+                const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+                const isOnLoginPage = currentPath === '/login';
+
                 // Check if this tab has an active session flag (cleared on tab close)
                 const isTabSessionActive = typeof window !== 'undefined' && sessionStorage.getItem('ledger_session_active') === 'true';
 
                 const { data: { session }, error } = await supabase.auth.getSession();
 
                 if (error) {
-                    // Check for specific refresh token errors
-                    // "Invalid Refresh Token" or "Refresh Token Not Found" usually means the session is dead on server
                     if (error.message.includes('Refresh Token') || error.status === 400) {
                         console.warn('Invalid session detected (Refresh Token Error), clearing local auth.');
                         await supabase.auth.signOut({ scope: 'local' });
@@ -107,15 +109,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
 
                 if (session) {
-                    // If we have a cookie session but NO tab session flag, it means the browser/tab was likely closed and reopened (fresh start).
-                    // Enforce logout to require fresh login.
                     if (!isTabSessionActive) {
-                        console.warn('Session cookie found but no active tab session. Forcing logout to enforce login on app open.');
-                        await supabase.auth.signOut();
+                        // ログインページにいる場合は signOut を呼ばない。
+                        // signOut → signInWithPassword の連続呼び出しで Supabase のレートリミット(429)が
+                        // 発動する原因となるため、ログインページでは強制ログアウト処理をスキップする。
+                        // middleware がセッション Cookie を使って適切にリダイレクトを管理している。
+                        if (!isOnLoginPage) {
+                            console.warn('Session cookie found but no active tab session. Forcing logout to enforce login on app open.');
+                            await supabase.auth.signOut();
+                        }
                         setUser(null);
-                        // Ensure we are redirecting to login if not already there/handled by middleware?
-                        // Middleware might let us through if cookie is valid, so we must kill the cookie.
-                        // After signOut, state change should trigger re-render or middleware check on next nav.
                         return;
                     }
 
@@ -124,13 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     // Check for setup account session
                     const setupUser = await getSetupUserServer();
                     if (setupUser) {
-                        // セットアップアカウントも sessionStorage でタブセッションを管理する
-                        // sessionStorage はブラウザ/タブを閉じるとクリアされるため、
-                        // クッキーが残っていてもフラグがなければ強制ログアウトする
                         const isSetupSessionActive = typeof window !== 'undefined' && sessionStorage.getItem('ledger_setup_session_active') === 'true';
                         if (!isSetupSessionActive) {
                             console.warn('Setup account cookie found but no active tab session. Forcing logout.');
-                            await logoutSetupAccount();
+                            if (!isOnLoginPage) {
+                                await logoutSetupAccount();
+                            }
                             setUser(null);
                             return;
                         }
@@ -240,12 +242,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return { user: null, errorType: 'UNEXPECTED' as const };
             }
 
-            // Immediately refresh the router to allow server components/middleware to see the new cookie
-            router.refresh();
-            // バッジの再取得を NotificationContext に通知（router.refresh 後の State リセット対策）
-            if (typeof window !== 'undefined') {
-                setTimeout(() => window.dispatchEvent(new CustomEvent('notification-refresh')), 300);
-            }
+            // NOTE: router.refresh() はここでは呼ばない。
+            // setUser() より先に refresh() を呼ぶと middleware が /login → / へリダイレクトし、
+            // AdminLayout が user=null を検知して再び /login へリダイレクトするループが発生する。
+            // router.refresh() と router.push() は handleSubmit 側（setUser 実行済み）で行う。
 
             // Fetch Employee Profile linked to this Auth User via Secure API
             // This handles RLS bypass and auto-linking if necessary
@@ -299,7 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             return { user: null, errorType: 'UNEXPECTED' as const };
         }
-    }, [router, supabase]);
+    }, [supabase]);
 
     const logout = useCallback(async (shouldRedirect: boolean = true) => {
         try {
