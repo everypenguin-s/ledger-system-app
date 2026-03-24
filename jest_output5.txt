@@ -1,0 +1,32 @@
+FAIL src/features/notifications/hooks/__tests__/useSystemAlerts.test.ts
+  useSystemAlerts
+    √ isInitialized=false の場合は空配列を返す (31 ms)
+    × 未登録社員コードのデバイス（unregistered_employee） (7 ms)
+    √ 重複した端末CD（duplicate_terminal） (4 ms)
+    √ 契約残30日以内（contract_expiring）: 切れそう (81 ms)
+    √ 契約期限超過（contract_expiring）: 切れています (4 ms)
+    √ status !== "in-use" のデバイスは missing_* チェックをスキップする (3 ms)
+
+  ● useSystemAlerts › 未登録社員コードのデバイス（unregistered_employee）
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 4
+    Received array:  [{"id": "unreg-emp-iphone-iph-1", "message": "登録されていない社員コード「EMP999」が使用されています", "path": "/devices/iphones?highlight=iph-1&field=employeeCode", "recordId": "iph-1", "source": "iPhone", "type": "unregistered_employee"}, {"id": "missing-iPhone-iph-1-addressCode", "message": "事業所コードが登録されていません", "path": "/devices/iphones?highlight=iph-1&field=addressCode", "recordId": "iph-1", "source": "iPhone", "type": "missing_address_code"}, {"id": "missing-Employee-emp-1-areaCode", "message": "エリアコードが登録されていません", "path": "/masters/employees?highlight=emp-1&field=areaCode", "recordId": "emp-1", "source": "Employee", "type": "missing_area_code"}, {"id": "missing-Employee-emp-1-addressCode", "message": "事業所コードが登録されていません", "path": "/masters/employees?highlight=emp-1&field=addressCode", "recordId": "emp-1", "source": "Employee", "type": "missing_address_code"}]
+
+    [0m [90m 49 |[39m         })[33m;[39m
+     [90m 50 |[39m         [36mconst[39m { result } [33m=[39m renderHook(() [33m=>[39m useSystemAlerts())[33m;[39m
+    [31m[1m>[22m[39m[90m 51 |[39m         expect(result[33m.[39mcurrent)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 52 |[39m         expect(result[33m.[39mcurrent[[35m0[39m][33m.[39mtype)[33m.[39mtoBe([32m'unregistered_employee'[39m)[33m;[39m
+     [90m 53 |[39m         expect(result[33m.[39mcurrent[[35m0[39m][33m.[39mmessage)[33m.[39mtoContain([32m'EMP999'[39m)[33m;[39m
+     [90m 54 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (src/features/notifications/hooks/__tests__/useSystemAlerts.test.ts:51:32)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 passed, 6 total
+Snapshots:   0 total
+Time:        3.953 s
+Ran all test suites matching src/features/notifications/hooks/__tests__/useSystemAlerts.test.ts.

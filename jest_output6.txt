@@ -1,0 +1,14 @@
+PASS src/features/notifications/hooks/__tests__/useSystemAlerts.test.ts
+  useSystemAlerts
+    √ isInitialized=false の場合は空配列を返す (31 ms)
+    √ 未登録社員コードのデバイス（unregistered_employee） (6 ms)
+    √ 重複した端末CD（duplicate_terminal） (3 ms)
+    √ 契約残30日以内（contract_expiring）: 切れそう (93 ms)
+    √ 契約期限超過（contract_expiring）: 切れています (5 ms)
+    √ status !== "in-use" のデバイスは missing_* チェックをスキップする (3 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        5.481 s
+Ran all test suites matching src/features/notifications/hooks/__tests__/useSystemAlerts.test.ts.

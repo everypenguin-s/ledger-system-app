@@ -1,0 +1,50 @@
+FAIL src/features/context/__tests__/DataContext.mappers.test.ts
+  ● Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
+     • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
+     • If you need a custom transformation, specify a "transform" option in your config.
+     • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\hokuto-marui\ledger-system-app\node_modules\jose\dist\browser\index.js:1
+    export { compactDecrypt } from './jwe/compact/decrypt.js';
+    ^^^^^^
+
+    SyntaxError: Unexpected token 'export'
+
+    [0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { createClientComponentClient } [36mfrom[39m [32m'@supabase/auth-helpers-nextjs'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 2 |[39m
+     [90m 3 |[39m [90m/**[39m
+     [90m 4 |[39m [90m * Singleton Supabase Client for the browser context.[39m[0m
+
+      at Runtime.createScriptFromCode (node_modules/jest-runtime/build/index.js:1314:40)
+      at Object.<anonymous> (node_modules/@supabase/auth-helpers-shared/src/utils/cookies.ts:3:27)
+      at Object.<anonymous> (node_modules/@supabase/auth-helpers-nextjs/src/clientComponentClient.ts:6:8)
+      at Object.<anonymous> (src/lib/supabase/client.ts:1:1)
+      at Object.<anonymous> (src/features/context/AuthContext.tsx:5:1)
+      at Object.<anonymous> (src/features/context/DataContext.tsx:6:1)
+      at Object.<anonymous> (src/features/context/__tests__/DataContext.mappers.test.ts:5:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        3.099 s
+Ran all test suites matching src/features/context/__tests__/DataContext.mappers.test.ts.

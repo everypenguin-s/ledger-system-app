@@ -1,0 +1,18 @@
+ReferenceError: __dirname is not defined in ES module scope
+
+   at auth.setup.ts:4
+
+  2 | import * as path from 'path';
+  3 |
+> 4 | const authFile = path.join(__dirname, '../../playwright/.auth/user.json');
+    |                            ^
+  5 |
+  6 | setup('authenticate', async ({ page }) => {
+  7 |   // ログインページへ移動
+    at C:\Users\hokuto-marui\ledger-system-app\tests\e2e\auth.setup.ts:4:28
+
+[1A[2K
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

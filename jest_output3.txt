@@ -1,0 +1,24 @@
+FAIL src/features/context/__tests__/DataContext.mappers.test.ts
+  ● Test suite failed to run
+
+    Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
+
+    [0m [90m  5 |[39m
+     [90m  6 |[39m [36mif[39m ([33m![39msupabaseUrl [33m||[39m [33m![39msupabaseAnonKey) {
+    [31m[1m>[22m[39m[90m  7 |[39m     [36mthrow[39m [36mnew[39m [33mError[39m(
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m  8 |[39m         [32m'Missing Supabase environment variables. '[39m [33m+[39m
+     [90m  9 |[39m         [32m'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'[39m
+     [90m 10 |[39m     )[0m
+
+      at Object.<anonymous> (src/lib/supabaseClient.ts:7:11)
+      at Object.<anonymous> (src/lib/logger.ts:1:1)
+      at Object.<anonymous> (src/features/context/AuthContext.tsx:8:1)
+      at Object.<anonymous> (src/features/context/DataContext.tsx:6:1)
+      at Object.<anonymous> (src/features/context/__tests__/DataContext.mappers.test.ts:5:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        5.376 s
+Ran all test suites matching src/features/context/__tests__/DataContext.mappers.test.ts.

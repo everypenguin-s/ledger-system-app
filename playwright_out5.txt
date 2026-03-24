@@ -1,0 +1,9 @@
+
+Running 4 tests using 1 worker
+
+  ✓  1 [setup] › tests\e2e\auth.setup.ts:4:1 › authenticate (13.2s)
+  ✓  2 [chromium] › tests\e2e\alerts.spec.ts:4:3 › システムアラート表示 › ログイン直後にアラートローディングのフリッカーが発生しないこと (3.8s)
+  ✓  3 [chromium] › tests\e2e\auth.spec.ts:5:3 › 認証フロー › ログイン状態でトップページまたはダッシュボードにアクセスできる (1.8s)
+  ✓  4 [chromium] › tests\e2e\auth.spec.ts:14:3 › 認証フロー › 未認証の場合はログインページにリダイレクトされる (1.4s)
+
+  4 passed (31.1s)
