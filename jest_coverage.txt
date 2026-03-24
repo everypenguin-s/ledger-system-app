@@ -1,0 +1,31 @@
+
+> ledger-system-app@0.0.0 test:coverage
+> jest --coverage
+
+PASS src/lib/utils/__tests__/dateHelpers.test.ts
+PASS src/features/notifications/hooks/__tests__/useSystemAlerts.test.ts
+PASS src/features/employees/logic/__tests__/employee-import-validator.test.ts
+PASS src/features/context/__tests__/DataContext.mappers.test.ts (5.653 s)
+-------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------------
+File                           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                
+-------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------------
+All files                      |   32.91 |    24.91 |    19.5 |    35.6 |                                                                                  
+ features/context              |    7.61 |     3.94 |    3.97 |    7.41 |                                                                                  
+  DataContext.tsx              |    7.61 |     3.94 |    3.97 |    7.41 | 380-1166,1193-1197                                                               
+ features/employees/logic      |   85.29 |    76.21 |   91.66 |   87.77 |                                                                                  
+  employee-import-validator.ts |   85.29 |    76.21 |   91.66 |   87.77 | 42-43,62,155-156,159-160,194-195,206-207,222-223,239-240,244-245,247-248,302-304 
+ features/notifications/hooks  |   91.66 |    70.31 |    82.6 |   93.97 |                                                                                  
+  useSystemAlerts.ts           |   91.66 |    70.31 |    82.6 |   93.97 | 91,119-120,135,154                                                               
+ lib/utils                     |   44.54 |    31.48 |   21.42 |   41.93 |                                                                                  
+  cn.ts                        |      75 |      100 |       0 |      75 | 5                                                                                
+  dateHelpers.ts               |   72.41 |    94.44 |      60 |      68 | 17-43,47-50                                                                      
+  phoneUtils.ts                |      20 |        0 |       0 |   11.11 | 7,18-52                                                                          
+  stringUtils.ts               |       0 |        0 |       0 |       0 | 11-64                                                                            
+  zipCodeUtils.ts              |       0 |        0 |       0 |       0 | 8-18                                                                             
+-------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------------
+
+Test Suites: 4 passed, 4 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        16.43 s
+Ran all test suites.
