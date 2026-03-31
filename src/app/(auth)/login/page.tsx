@@ -60,7 +60,9 @@ export default function LoginPage() {
 
                 let errorMsg = '社員番号またはパスワードが間違っています';
                 if (errorType === 'AUTH_RATE_LIMIT') {
-                    errorMsg = '短時間に試行回数が多すぎます。しばらく待ってから再度お試しください。';
+                    // FIX: レートリミット時も通常の失敗として扱い、開発中のストレスを軽減する
+                    // 必要に応じて開発環境でのみヒントを出すなどの調整が可能
+                    errorMsg = 'ログインに失敗しました。少し時間をおくか、社員番号・パスワードを確認してください。';
                 } else if (errorType === 'PROFILE_ERROR') {
                     errorMsg = 'プロフィール情報の取得に失敗しました';
                 } else if (errorType === 'UNEXPECTED') {

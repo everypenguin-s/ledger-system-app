@@ -367,6 +367,9 @@ const DeviceManualListContent = () => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [dragActive, setDragActive] = useState(false);
 
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<{ [fileName: string]: number }>({});
+
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
 
@@ -394,6 +397,15 @@ const DeviceManualListContent = () => {
             showAlert(`許可されていないファイル形式です。\n許可のみ: ${allowedExtensions.join(', ')}`);
             return false;
         }
+
+        // 1,000,000.0 KB = 1,024,000,000 bytes (roughly 1GB)
+        // User asked for 1000000.0KB = 1,000,000,000 bytes.
+        const maxFileSize = 1000000 * 1024;
+        if (file.size > maxFileSize) {
+            showAlert(`ファイルサイズが大きすぎます (最大 ${1000000 / 1024 / 1024} GB まで)。\n選択したファイル: ${(file.size / (1024 * 1024)).toFixed(2)} MB`);
+            return false;
+        }
+
         return true;
     };
 
@@ -430,6 +442,10 @@ const DeviceManualListContent = () => {
         const skippedFiles: string[] = [];
         const registeredFiles: string[] = [];
         let hasError = false;
+        let errorMessage = '';
+
+        setIsRegistering(true);
+        setUploadProgress({});
 
         try {
             const targetItem = manuals.find(item => item.title.trim() === title.trim());
@@ -453,9 +469,26 @@ const DeviceManualListContent = () => {
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                 const filePath = `${fileName}`;
 
+                // Set initial progress for this file
+                setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+
+                // Supabase Storage - Use Resumable Upload (TUS) for large files
                 const { error: uploadError } = await supabase.storage
                     .from('manuals')
-                    .upload(filePath, file);
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false,
+                        // @ts-ignore - Some versions of supabase-js types might not include onUploadProgress but it's supported
+                        onUploadProgress: (progress: any) => {
+                            const percent = (progress.loaded / progress.total) * 100;
+                            setUploadProgress(prev => ({
+                                ...prev,
+                                [file.name]: Math.round(percent)
+                            }));
+                        },
+                        // Enable resumable for large files (> 6MB)
+                        resumable: file.size > 6 * 1024 * 1024
+                    });
 
                 if (uploadError) {
                     console.error(`Upload error for ${file.name}:`, uploadError);
@@ -465,6 +498,7 @@ const DeviceManualListContent = () => {
                         errorDetails: uploadError
                     });
                     hasError = true;
+                    errorMessage = (uploadError as any).message || '不明なエラーが発生しました';
                     continue;
                 }
 
@@ -505,29 +539,26 @@ const DeviceManualListContent = () => {
                 }
 
                 await fetchManuals();
-
-                for (const fileName of registeredFiles) {
-                    // Manual log removed
-                }
             }
 
-            let message = '';
+            let resultMessage = '';
             if (registeredFiles.length > 0) {
-                message += `${registeredFiles.length}件のファイルを登録しました。`;
+                resultMessage += `${registeredFiles.length}件のファイルを登録しました。`;
             }
             if (skippedFiles.length > 0) {
-                message += `\n以下のファイルは既に存在するためスキップされました:\n${skippedFiles.join('\n')}`;
+                resultMessage += `\n以下のファイルは既に存在するためスキップされました:\n${skippedFiles.join('\n')}`;
             }
             if (hasError) {
-                message += '\n一部のファイルのアップロードに失敗しました。';
+                resultMessage += `\n一部のファイルのアップロードに失敗しました。\nエラー内容: ${errorMessage}`;
             }
 
-            if (message) showAlert(message);
+            if (resultMessage) showAlert(resultMessage);
 
             if (registeredFiles.length > 0 || skippedFiles.length > 0) {
                 setIsAddModalOpen(false);
                 setTitle('');
                 setSelectedFiles([]);
+                setUploadProgress({});
             }
 
         } catch (error: any) {
@@ -538,6 +569,8 @@ const DeviceManualListContent = () => {
                 errorDetails: error
             });
             showAlert(`登録に失敗しました: ${error.message || JSON.stringify(error)}`);
+        } finally {
+            setIsRegistering(false);
         }
     };
 
@@ -821,22 +854,39 @@ const DeviceManualListContent = () => {
                     ) : (
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                             {selectedFiles.map((file, index) => (
-                                <div key={`${file.name}-${index}`} className="border border-border rounded-lg p-3 flex items-center justify-between bg-gray-50">
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-8 h-8 bg-white border border-border rounded flex items-center justify-center text-blue-600 flex-shrink-0">
-                                            <FileText size={16} />
+                                <div key={`${file.name}-${index}`} className="border border-border rounded-lg p-3 space-y-2 bg-gray-50">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-8 h-8 bg-white border border-border rounded flex items-center justify-center text-blue-600 flex-shrink-0">
+                                                <FileText size={16} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-ink truncate text-sm">{file.name}</p>
+                                                <p className="text-xs text-ink-light">{(file.size / 1024).toFixed(1)} KB</p>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-ink truncate text-sm">{file.name}</p>
-                                            <p className="text-xs text-ink-light">{(file.size / 1024).toFixed(1)} KB</p>
-                                        </div>
+                                        <button
+                                            onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
+                                            disabled={isRegistering}
+                                            className="text-gray-400 hover:text-red-500 transition-colors p-1 disabled:opacity-30"
+                                        >
+                                            <X size={18} />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
-                                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                                    >
-                                        <X size={18} />
-                                    </button>
+                                    {isRegistering && uploadProgress[file.name] !== undefined && (
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-[10px] text-ink-light">
+                                                <span>アップロード中...</span>
+                                                <span>{uploadProgress[file.name]}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-blue-600 transition-all duration-300"
+                                                    style={{ width: `${uploadProgress[file.name]}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             <button
@@ -858,10 +908,15 @@ const DeviceManualListContent = () => {
                     )}
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                        <ActionButton onClick={() => setIsAddModalOpen(false)}>
+                        <ActionButton onClick={() => setIsAddModalOpen(false)} disabled={isRegistering}>
                             キャンセル
                         </ActionButton>
-                        <ActionButton variant="primary" onClick={handleRegister} disabled={!title || selectedFiles.length === 0}>
+                        <ActionButton
+                            variant="primary"
+                            onClick={handleRegister}
+                            disabled={!title || selectedFiles.length === 0 || isRegistering}
+                            isLoading={isRegistering}
+                        >
                             登録
                         </ActionButton>
                     </div>

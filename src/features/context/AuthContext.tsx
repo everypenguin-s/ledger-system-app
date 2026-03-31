@@ -110,15 +110,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (session) {
                     if (!isTabSessionActive) {
-                        // ログインページにいる場合は signOut を呼ばない。
-                        // signOut → signInWithPassword の連続呼び出しで Supabase のレートリミット(429)が
-                        // 発動する原因となるため、ログインページでは強制ログアウト処理をスキップする。
-                        // middleware がセッション Cookie を使って適切にリダイレクトを管理している。
+                        // FIX: ログインページでは signOut を絶対に呼ばないようにし、レートリミット(429)の引き金になるのを防ぐ
                         if (!isOnLoginPage) {
                             console.warn('Session cookie found but no active tab session. Forcing logout to enforce login on app open.');
                             await supabase.auth.signOut();
+                            setUser(null);
+                        } else {
+                            // ログインページの場合は単に state を null にするだけで通信はしない
+                            setUser(null);
                         }
-                        setUser(null);
                         return;
                     }
 
@@ -129,8 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (setupUser) {
                         const isSetupSessionActive = typeof window !== 'undefined' && sessionStorage.getItem('ledger_setup_session_active') === 'true';
                         if (!isSetupSessionActive) {
-                            console.warn('Setup account cookie found but no active tab session. Forcing logout.');
                             if (!isOnLoginPage) {
+                                console.warn('Setup account cookie found but no active tab session. Forcing logout.');
                                 await logoutSetupAccount();
                             }
                             setUser(null);
