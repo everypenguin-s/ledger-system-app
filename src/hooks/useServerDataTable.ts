@@ -70,8 +70,14 @@ export const useServerDataTable = <T extends { id: string }>({
                 console.log('[useServerDataTable] Requesting highlightPage for id:', highlightId);
             }
 
-            const result = await fetchData(params);
+            const result: any = await fetchData(params);
             console.log('[useServerDataTable] Received result:', result);
+
+            if (result.error === 'UNAUTHENTICATED') {
+                setError('セッションが切れました。再度ログインしてください。');
+                setIsLoading(false);
+                return;
+            }
 
             // Handle fallback notification
             if (result.wasFallback) {

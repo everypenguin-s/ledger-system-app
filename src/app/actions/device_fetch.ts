@@ -43,15 +43,16 @@ const checkAuth = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error || !user) {
-        console.error('[checkAuth] Supabase auth error:', error?.message);
-        throw new Error(`Unauthenticated: ${error?.message || 'No user found'}`);
+        if (error) console.error('[checkAuth] Supabase auth error:', error.message);
+        return null;
     }
     
     return user;
 };
 
 export async function fetchIPhonesAction() {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return []; // Return empty array instead of throwing
     const admin = getSupabaseAdmin();
     const { data, error } = await admin.from('iphones').select('*').order('management_number', { ascending: true });
     if (error) throw new Error(error.message);
@@ -67,7 +68,8 @@ export interface PaginationParams {
 }
 
 export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const applyFiltersAndSort = (baseQuery: any) => {
@@ -155,7 +157,8 @@ export async function fetchIPhonesPaginatedAction({ page, pageSize, searchTerm, 
 }
 
 export async function fetchIPhonesAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     
     let query = admin.from('iphones').select('*').order('management_number', { ascending: true });
@@ -169,7 +172,8 @@ export async function fetchIPhonesAllAction(searchTerm?: string) {
 }
 
 export async function fetchTabletsAction() {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     const { data, error } = await admin.from('tablets').select('*').order('terminal_code', { ascending: true });
     if (error) throw new Error(error.message);
@@ -177,7 +181,8 @@ export async function fetchTabletsAction() {
 }
 
 export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const applyFiltersAndSort = (baseQuery: any) => {
@@ -260,7 +265,8 @@ export async function fetchTabletsPaginatedAction({ page, pageSize, searchTerm, 
 }
 
 export async function fetchTabletsAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     let query = admin.from('tablets').select('*').order('terminal_code', { ascending: true });
     if (searchTerm) {
@@ -272,7 +278,8 @@ export async function fetchTabletsAllAction(searchTerm?: string) {
 }
 
 export async function fetchFeaturePhonesAction() {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     const { data, error } = await admin.from('featurephones').select('*').order('management_number', { ascending: true });
     if (error) throw new Error(error.message);
@@ -280,7 +287,8 @@ export async function fetchFeaturePhonesAction() {
 }
 
 export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const applyFiltersAndSort = (baseQuery: any) => {
@@ -367,7 +375,8 @@ export async function fetchFeaturePhonesPaginatedAction({ page, pageSize, search
 }
 
 export async function fetchFeaturePhonesAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     let query = admin.from('featurephones').select('*').order('management_number', { ascending: true });
     if (searchTerm) {
@@ -379,7 +388,8 @@ export async function fetchFeaturePhonesAllAction(searchTerm?: string) {
 }
 
 export async function fetchRoutersAction() {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     const { data, error } = await admin.from('routers').select('*').order('no', { ascending: true });
     if (error) throw new Error(error.message);
@@ -387,7 +397,8 @@ export async function fetchRoutersAction() {
 }
 
 export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const applyFiltersAndSort = (baseQuery: any) => {
@@ -474,7 +485,8 @@ export async function fetchRoutersPaginatedAction({ page, pageSize, searchTerm, 
 }
 
 export async function fetchRoutersAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     let query = admin.from('routers').select('*').order('no', { ascending: true });
     if (searchTerm) {
@@ -486,7 +498,8 @@ export async function fetchRoutersAllAction(searchTerm?: string) {
 }
 
 export async function fetchAreasAction() {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     
     const allData: any[] = [];
@@ -514,7 +527,8 @@ export async function fetchAreasAction() {
 }
 
 export async function fetchAddressesAction() {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
 
     const allData: any[] = [];

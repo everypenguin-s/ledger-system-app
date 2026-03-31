@@ -116,8 +116,8 @@ const checkAuth = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error || !user) {
-        console.error('[checkAuth] Supabase auth error:', error?.message);
-        throw new Error(`Unauthenticated: ${error?.message || 'No user found'}`);
+        if (error) console.error('[checkAuth] Supabase auth error:', error.message);
+        return null;
     }
     
     return user;
@@ -125,7 +125,8 @@ const checkAuth = async () => {
 
 // --- Employees ---
 export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const keyMap: Record<string, string> = {
@@ -216,7 +217,8 @@ export async function fetchEmployeesPaginatedAction({ page, pageSize, searchTerm
 
 
 export async function fetchEmployeesAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
 
     const allData: any[] = [];
@@ -250,7 +252,8 @@ export async function fetchEmployeesAllAction(searchTerm?: string) {
 
 // --- Addresses (Offices) ---
 export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const applyFiltersAndSort = (baseQuery: any) => {
@@ -348,7 +351,8 @@ export async function fetchAddressesPaginatedAction({ page, pageSize, searchTerm
 }
 
 export async function fetchAddressesAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
     
     const allData: any[] = [];
@@ -382,7 +386,8 @@ export async function fetchAddressesAllAction(searchTerm?: string) {
 
 // --- Areas ---
 export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, sortCriteria, highlightId }: PaginationParams) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return { data: [], totalCount: 0, error: 'UNAUTHENTICATED' };
     const admin = getSupabaseAdmin();
 
     const applyFiltersAndSort = (baseQuery: any) => {
@@ -458,7 +463,8 @@ export async function fetchAreasPaginatedAction({ page, pageSize, searchTerm, so
 }
 
 export async function fetchAreasAllAction(searchTerm?: string) {
-    await checkAuth();
+    const user = await checkAuth();
+    if (!user) return [];
     const admin = getSupabaseAdmin();
 
     const allData: any[] = [];

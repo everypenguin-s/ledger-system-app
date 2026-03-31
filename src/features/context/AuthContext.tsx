@@ -109,17 +109,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
 
                 if (session) {
-                    if (!isTabSessionActive) {
-                        // FIX: ログインページでは signOut を絶対に呼ばないようにし、レートリミット(429)の引き金になるのを防ぐ
-                        if (!isOnLoginPage) {
-                            console.warn('Session cookie found but no active tab session. Forcing logout to enforce login on app open.');
-                            await supabase.auth.signOut();
-                            setUser(null);
-                        } else {
-                            // ログインページの場合は単に state を null にするだけで通信はしない
-                            setUser(null);
-                        }
-                        return;
+                    // FIX: リフレッシュ時や新規タブで開いた際、有効なセッションがあればタブフラグを自動復元する
+                    // 強制ログアウト（signOut）はアグレッシブすぎる（他のタブまでログアウトされる）ため廃止。
+                    if (!isTabSessionActive && typeof window !== 'undefined') {
+                        console.log('[initSession] Tab session flag restored from active session cookie.');
+                        sessionStorage.setItem('ledger_session_active', 'true');
                     }
 
                     await refreshUser();
@@ -128,13 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const setupUser = await getSetupUserServer();
                     if (setupUser) {
                         const isSetupSessionActive = typeof window !== 'undefined' && sessionStorage.getItem('ledger_setup_session_active') === 'true';
-                        if (!isSetupSessionActive) {
-                            if (!isOnLoginPage) {
-                                console.warn('Setup account cookie found but no active tab session. Forcing logout.');
-                                await logoutSetupAccount();
-                            }
-                            setUser(null);
-                            return;
+                        // セットアップアカウントについても同様にフラグを復元する
+                        if (!isSetupSessionActive && typeof window !== 'undefined') {
+                            console.log('[initSession] Setup account flag restored from active cookie.');
+                            sessionStorage.setItem('ledger_setup_session_active', 'true');
                         }
                         setUser(setupUser as Employee);
                     }
