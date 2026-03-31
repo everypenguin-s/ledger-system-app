@@ -267,11 +267,21 @@ const DeviceManualListContent = () => {
 
         try {
             setIsDownloading(true);
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Download failed');
+            
+            // Extract storage path from URL
+            const urlObj = new URL(url);
+            const pathParts = urlObj.pathname.split('/');
+            const storagePath = decodeURIComponent(pathParts[pathParts.length - 1]);
 
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
+            // Use Supabase Storage download which handles auth session
+            const { data, error } = await supabase.storage
+                .from('manuals')
+                .download(storagePath);
+
+            if (error) throw error;
+            if (!data) throw new Error('Download failed: No data');
+
+            const downloadUrl = window.URL.createObjectURL(data);
             const link = document.createElement('a');
             link.href = downloadUrl;
             link.setAttribute('download', fileName);
